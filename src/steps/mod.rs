@@ -1,12 +1,7 @@
 mod choose_target;
 mod welcome;
 
-use {
-    crate::{states::TargetType, styles::fonts},
-    choose_target::ChooseTarget,
-    iced::{Column, Element, Text},
-    welcome::Welcome,
-};
+use {crate::states::TargetType, choose_target::ChooseTarget, iced::Element, welcome::Welcome};
 
 #[derive(Debug, Clone, Copy)]
 pub enum StepMessage {
@@ -17,10 +12,6 @@ trait Step<'a> {
     fn title(&self) -> &str;
 
     fn can_next(&self) -> bool;
-
-    fn container(&self) -> Column<'a, StepMessage> {
-        Column::new().push(Text::new(self.title()).size(50).font(fonts::BOLD))
-    }
 
     fn view(&mut self) -> Element<StepMessage>;
 }

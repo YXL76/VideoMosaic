@@ -1,3 +1,4 @@
+use crate::states::I18N;
 use {
     super::{Step, StepMessage},
     crate::{
@@ -16,7 +17,7 @@ pub struct ChooseTarget {
 
 impl<'a> Step<'a> for ChooseTarget {
     fn title(&self) -> &str {
-        "Choose Target"
+        I18N.load().choose_target
     }
 
     fn can_next(&self) -> bool {
@@ -24,10 +25,13 @@ impl<'a> Step<'a> for ChooseTarget {
     }
 
     fn view(&mut self) -> Element<StepMessage> {
-        let container = { self.container() };
         let (text, image) = {
             let ref path = STATE.read().unwrap().target_path;
             (Text::new(path.to_str().unwrap_or("")), Image::new(path))
+        };
+        let (choose_image, choose_video) = {
+            let i18n = I18N.load();
+            (i18n.choose_image, i18n.choose_video)
         };
 
         let left_side: Element<_> = Column::new()
@@ -35,12 +39,12 @@ impl<'a> Step<'a> for ChooseTarget {
             .spacing(spacings::_4)
             .push(Space::with_height(Length::FillPortion(1)))
             .push(
-                pri_btn(&mut self.image_btn, " Choose Image", spacings::_32)
+                pri_btn(&mut self.image_btn, choose_image, spacings::_32)
                     .on_press(StepMessage::TargetType(TargetType::Image)),
             )
-            .push(Space::with_height(Length::Units(spacings::_4)))
+            .push(Space::with_height(Length::Units(spacings::_3)))
             .push(
-                pri_btn(&mut self.video_btn, " Choose Video", spacings::_32)
+                pri_btn(&mut self.video_btn, choose_video, spacings::_32)
                     .on_press(StepMessage::TargetType(TargetType::Video)),
             )
             .push(Space::with_height(Length::FillPortion(1)))
@@ -60,6 +64,6 @@ impl<'a> Step<'a> for ChooseTarget {
             .push(right_side)
             .into();
 
-        container.push(content).into()
+        content
     }
 }

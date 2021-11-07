@@ -3,6 +3,7 @@ use iced::{button, Background, Color, Vector};
 pub enum Button {
     Primary,
     Secondary,
+    Transparency,
 }
 
 impl button::StyleSheet for Button {
@@ -11,39 +12,44 @@ impl button::StyleSheet for Button {
             background: Some(Background::Color(match self {
                 Button::Primary => colors::blue::_500,
                 Button::Secondary => colors::cool_gray::_500,
+                Button::Transparency => Color::WHITE,
             })),
             border_radius: spacings::_3 as f32,
             shadow_offset: Vector::new(1.0, 1.0),
-            text_color: colors::gray::_100,
+            text_color: match self {
+                Button::Transparency => colors::cool_gray::_800,
+                _ => colors::gray::_100,
+            },
             ..button::Style::default()
         }
     }
 
     fn hovered(&self) -> button::Style {
+        let active = self.active();
         button::Style {
-            text_color: Color::WHITE,
+            text_color: match self {
+                Button::Transparency => colors::cool_gray::_800,
+                _ => Color::WHITE,
+            },
             shadow_offset: Vector::new(1.0, 2.0),
-            ..self.active()
+            ..active
         }
     }
 }
 
 pub mod fonts {
-    use iced::Font;
+    // use iced::Font;
 
-    pub const REGULAR_BYTES: &[u8] =
-        include_bytes!("../static/fonts/JetBrains Mono Regular Nerd Font Complete.ttf");
-
-    pub const BOLD: Font = Font::External {
-        name: "JetBrains Mono Regular Nerd Font Complete",
-        bytes: include_bytes!("../static/fonts/JetBrains Mono Bold Nerd Font Complete.ttf"),
-    };
+    pub const REGULAR_BYTES: &[u8] = include_bytes!(
+        "../static/fonts/Sarasa UI SC Nerd Font Plus Material Design Icons Windows Compatible.ttf"
+    );
 }
 
 pub mod spacings {
     pub const _3: u16 = 4 * 3;
     pub const _4: u16 = 4 * 4;
     pub const _8: u16 = 4 * 8;
+    pub const _12: u16 = 4 * 12;
     pub const _16: u16 = 4 * 16;
     pub const _24: u16 = 4 * 24;
     pub const _32: u16 = 4 * 32;

@@ -33,3 +33,19 @@ pub fn sec_btn<'a, Message: Clone>(
 ) -> Button<'a, Message> {
     btn(state, label, len, styles::Button::Secondary)
 }
+
+pub fn rou_btn<'a, Message: Clone>(
+    state: &'a mut button::State,
+    label: &str,
+    len: u16,
+) -> Button<'a, Message> {
+    Button::new(
+        state,
+        Text::new(label)
+            .horizontal_alignment(alignment::Horizontal::Center)
+            .vertical_alignment(alignment::Vertical::Center),
+    )
+    .width(Length::Units(len))
+    .height(Length::Units(len))
+    .style(styles::Button::Transparency)
+}

@@ -1,5 +1,7 @@
-use super::{Step, StepMessage};
-use iced::{Element, Text};
+use {
+    super::{Step, StepMessage},
+    iced::{Column, Element, Text},
+};
 
 pub struct Welcome;
 
@@ -13,7 +15,7 @@ impl<'a> Step<'a> for Welcome {
     }
 
     fn view(&mut self) -> Element<StepMessage> {
-        self.container()
+        Column::new()
             .push(Text::new(
                 "This is a simple tour meant to showcase a bunch of widgets \
                  that can be easily implemented on top of Iced.",

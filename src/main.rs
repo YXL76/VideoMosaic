@@ -8,12 +8,12 @@ mod widgets;
 use {
     iced::{
         button, scrollable, window, Column, Container, Element, Length, Row, Sandbox, Scrollable,
-        Settings, Space,
+        Settings, Space, Text,
     },
-    states::{TargetType, STATE},
+    states::{toggle_i18n, TargetType, I18N, STATE},
     steps::{StepMessage, Steps},
     styles::{fonts, spacings},
-    widgets::{pri_btn, sec_btn},
+    widgets::{pri_btn, rou_btn, sec_btn},
 };
 
 pub fn main() -> iced::Result {
@@ -32,6 +32,7 @@ pub fn main() -> iced::Result {
 #[derive(Default)]
 struct MosaicVideo<'a> {
     scroll: scrollable::State,
+    i18n_btn: button::State,
     back_btn: button::State,
     next_btn: button::State,
 
@@ -40,6 +41,7 @@ struct MosaicVideo<'a> {
 
 #[derive(Debug, Clone, Copy)]
 enum Message {
+    I18nPressed,
     BackPressed,
     NextPressed,
     StepMessage(StepMessage),
@@ -58,12 +60,10 @@ impl<'a> Sandbox for MosaicVideo<'a> {
 
     fn update(&mut self, message: Message) {
         match message {
-            Message::BackPressed => {
-                self.steps.back();
-            }
-            Message::NextPressed => {
-                self.steps.next();
-            }
+            Message::I18nPressed => toggle_i18n(),
+            Message::BackPressed => self.steps.back(),
+            Message::NextPressed => self.steps.next(),
+
             Message::StepMessage(step_message) => match step_message {
                 StepMessage::TargetType(target_type) => match target_type {
                     TargetType::Image => {
@@ -101,24 +101,37 @@ impl<'a> Sandbox for MosaicVideo<'a> {
     }
 
     fn view(&mut self) -> Element<Message> {
-        const BACK_LABEL: &str = " Back";
-        const NEXT_LABEL: &str = "Next ";
+        let (back_label, next_label) = {
+            let i18n = I18N.load();
+            (i18n.back, i18n.next)
+        };
+
+        let header = Row::new()
+            .push(
+                Text::new(self.title())
+                    .size(spacings::_12)
+                    .width(Length::Fill),
+            )
+            .push(
+                rou_btn(&mut self.i18n_btn, I18N.load().symbol, spacings::_12)
+                    .on_press(Message::I18nPressed),
+            );
 
         let controls = match (self.steps.can_back(), self.steps.can_next()) {
             (true, true) => Row::new()
                 .push(
-                    sec_btn(&mut self.back_btn, BACK_LABEL, spacings::_24)
+                    sec_btn(&mut self.back_btn, back_label, spacings::_24)
                         .on_press(Message::BackPressed),
                 )
                 .push(Space::with_width(Length::Units(10)))
                 .push(
-                    pri_btn(&mut self.next_btn, NEXT_LABEL, spacings::_24)
+                    pri_btn(&mut self.next_btn, next_label, spacings::_24)
                         .on_press(Message::NextPressed),
                 ),
 
             (true, false) => Row::new()
                 .push(
-                    sec_btn(&mut self.back_btn, BACK_LABEL, spacings::_24)
+                    sec_btn(&mut self.back_btn, back_label, spacings::_24)
                         .on_press(Message::BackPressed),
                 )
                 .push(Space::with_width(Length::Units(10 + spacings::_24))),
@@ -126,7 +139,7 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             (false, true) => Row::new()
                 .push(Space::with_width(Length::Units(10 + spacings::_24)))
                 .push(
-                    pri_btn(&mut self.next_btn, NEXT_LABEL, spacings::_24)
+                    pri_btn(&mut self.next_btn, next_label, spacings::_24)
                         .on_press(Message::NextPressed),
                 ),
 
@@ -134,13 +147,14 @@ impl<'a> Sandbox for MosaicVideo<'a> {
         };
 
         let scrollable = Scrollable::new(&mut self.scroll)
-            .push(Container::new(self.steps.view().map(Message::StepMessage)))
+            .push(self.steps.view().map(Message::StepMessage))
             .height(Length::Fill);
 
         let content = Column::new()
             .max_width(960)
             .padding(spacings::_16)
             .spacing(spacings::_8)
+            .push(header)
             .push(scrollable)
             .push(Container::new(controls).width(Length::Fill).center_x());
 
