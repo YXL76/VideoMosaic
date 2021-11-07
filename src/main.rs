@@ -1,5 +1,3 @@
-#![feature(once_cell)]
-
 mod states;
 mod steps;
 mod styles;
@@ -12,7 +10,7 @@ use {
     },
     states::{State, TargetType, EN, ZH_CN},
     steps::{StepMessage, Steps},
-    styles::{fonts, spacings},
+    styles::{fonts, spacings, Theme},
     widgets::{pri_btn, rou_btn, sec_btn},
 };
 
@@ -35,6 +33,7 @@ struct MosaicVideo<'a> {
 
     scroll: scrollable::State,
     i18n_btn: button::State,
+    theme_btn: button::State,
     back_btn: button::State,
     next_btn: button::State,
 
@@ -44,6 +43,7 @@ struct MosaicVideo<'a> {
 #[derive(Debug, Clone, Copy)]
 enum Message {
     I18nPressed,
+    ThemePressed,
     BackPressed,
     NextPressed,
     StepMessage(StepMessage),
@@ -61,14 +61,22 @@ impl<'a> Sandbox for MosaicVideo<'a> {
     }
 
     fn update(&mut self, message: Message) {
+        let Self { state, steps, .. } = self;
+
         match message {
-            Message::I18nPressed => match self.state.i18n.symbol {
-                "En" => self.state.i18n = &ZH_CN,
-                "中" => self.state.i18n = &EN,
+            Message::I18nPressed => match state.i18n.symbol {
+                "En" => state.i18n = &ZH_CN,
+                "中" => state.i18n = &EN,
                 _ => (),
             },
-            Message::BackPressed => self.steps.back(),
-            Message::NextPressed => self.steps.next(),
+            Message::ThemePressed => {
+                state.theme = match state.theme {
+                    Theme::Light => Theme::Dark,
+                    Theme::Dark => Theme::Light,
+                }
+            }
+            Message::BackPressed => steps.back(),
+            Message::NextPressed => steps.next(),
 
             Message::StepMessage(step_message) => match step_message {
                 StepMessage::TargetType(target_type) => {
@@ -84,10 +92,10 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                         TargetType::None => None,
                     };
                     if let Some(path) = pick_res {
-                        self.state.target_path = path;
-                        self.state.target_type = target_type;
+                        state.target_path = path;
+                        state.target_type = target_type;
                     } else {
-                        self.state.target_type = TargetType::None;
+                        state.target_type = TargetType::None;
                     }
                 }
             },
@@ -95,47 +103,61 @@ impl<'a> Sandbox for MosaicVideo<'a> {
     }
 
     fn view(&mut self) -> Element<Message> {
+        let title = self.title();
+        let Self {
+            state,
+            scroll,
+            i18n_btn,
+            theme_btn,
+            back_btn,
+            next_btn,
+            steps,
+        } = self;
+
         let header = Row::new()
+            .push(Text::new(title).size(spacings::_12).width(Length::Fill))
             .push(
-                Text::new(self.title())
-                    .size(spacings::_12)
-                    .width(Length::Fill),
-            )
-            .push(
-                rou_btn(&mut self.i18n_btn, self.state.i18n.symbol, spacings::_12)
+                rou_btn(i18n_btn, state.i18n.symbol, spacings::_12, &state.theme)
                     .on_press(Message::I18nPressed),
+            )
+            .push(Space::with_width(Length::Units(spacings::_3)))
+            .push(
+                rou_btn(theme_btn, state.theme.symbol(), spacings::_12, &state.theme)
+                    .on_press(Message::ThemePressed),
             );
 
-        let control_items: Option<[Element<_>; 3]> =
-            match (self.steps.can_back(), self.steps.can_next()) {
-                (true, true) => Some([
-                    sec_btn(&mut self.back_btn, self.state.i18n.back, spacings::_24)
-                        .on_press(Message::BackPressed)
-                        .into(),
-                    Space::with_width(Length::Units(10)).into(),
-                    pri_btn(&mut self.next_btn, self.state.i18n.next, spacings::_24)
-                        .on_press(Message::NextPressed)
-                        .into(),
-                ]),
+        let back_l = state.i18n.back;
+        let next_l = state.i18n.next;
+        let btn_w = spacings::_24;
+        let control_items: Option<[Element<_>; 3]> = match (steps.can_back(), steps.can_next()) {
+            (true, true) => Some([
+                sec_btn(back_btn, back_l, btn_w, &state.theme)
+                    .on_press(Message::BackPressed)
+                    .into(),
+                Space::with_width(Length::Units(10)).into(),
+                pri_btn(next_btn, next_l, btn_w, &state.theme)
+                    .on_press(Message::NextPressed)
+                    .into(),
+            ]),
 
-                (true, false) => Some([
-                    sec_btn(&mut self.back_btn, self.state.i18n.back, spacings::_24)
-                        .on_press(Message::BackPressed)
-                        .into(),
-                    Space::with_width(Length::Units(10)).into(),
-                    Space::with_width(Length::Units(spacings::_24)).into(),
-                ]),
+            (true, false) => Some([
+                sec_btn(back_btn, back_l, btn_w, &state.theme)
+                    .on_press(Message::BackPressed)
+                    .into(),
+                Space::with_width(Length::Units(10)).into(),
+                Space::with_width(Length::Units(btn_w)).into(),
+            ]),
 
-                (false, true) => Some([
-                    Space::with_width(Length::Units(10)).into(),
-                    Space::with_width(Length::Units(spacings::_24)).into(),
-                    pri_btn(&mut self.next_btn, self.state.i18n.next, spacings::_24)
-                        .on_press(Message::NextPressed)
-                        .into(),
-                ]),
+            (false, true) => Some([
+                Space::with_width(Length::Units(10)).into(),
+                Space::with_width(Length::Units(btn_w)).into(),
+                pri_btn(next_btn, next_l, btn_w, &state.theme)
+                    .on_press(Message::NextPressed)
+                    .into(),
+            ]),
 
-                (false, false) => None,
-            };
+            (false, false) => None,
+        };
         let mut controls = Row::new();
         if let Some(items) = control_items {
             for item in items {
@@ -143,8 +165,8 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             }
         }
 
-        let scrollable = Scrollable::new(&mut self.scroll)
-            .push(self.steps.view(&self.state).map(Message::StepMessage))
+        let scrollable = Scrollable::new(scroll)
+            .push(steps.view(state).map(Message::StepMessage))
             .height(Length::Fill);
 
         let content = Column::new()
@@ -159,6 +181,7 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             .width(Length::Fill)
             .height(Length::Fill)
             .center_x()
+            .style(state.theme)
             .into()
     }
 }

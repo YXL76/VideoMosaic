@@ -1,8 +1,9 @@
-use std::path::PathBuf;
+use {crate::styles::Theme, std::path::PathBuf};
 
 #[derive(Default)]
 pub struct State {
     pub i18n: &'static I18n,
+    pub theme: Theme,
     pub target_type: TargetType,
     pub target_path: PathBuf,
 }

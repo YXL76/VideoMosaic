@@ -1,5 +1,5 @@
 use {
-    crate::styles::{self, spacings},
+    crate::styles::{spacings, Theme},
     iced::{alignment, button, Button, Length, Text},
 };
 
@@ -13,7 +13,7 @@ fn btn<'a, Message: Clone>(
     state: &'a mut button::State,
     label: &str,
     len: u16,
-    style: impl button::StyleSheet + 'static,
+    style: Box<dyn button::StyleSheet>,
 ) -> Button<'a, Message> {
     Button::new(state, center_text(label))
         .padding(spacings::_3)
@@ -25,25 +25,28 @@ pub fn pri_btn<'a, Message: Clone>(
     state: &'a mut button::State,
     label: &str,
     len: u16,
+    theme: &Theme,
 ) -> Button<'a, Message> {
-    btn(state, label, len, styles::Button::Primary)
+    btn(state, label, len, theme.primary_btn())
 }
 
 pub fn sec_btn<'a, Message: Clone>(
     state: &'a mut button::State,
     label: &str,
     len: u16,
+    theme: &Theme,
 ) -> Button<'a, Message> {
-    btn(state, label, len, styles::Button::Secondary)
+    btn(state, label, len, theme.secondary_btn())
 }
 
 pub fn rou_btn<'a, Message: Clone>(
     state: &'a mut button::State,
     label: &str,
     len: u16,
+    theme: &Theme,
 ) -> Button<'a, Message> {
     Button::new(state, center_text(label))
         .width(Length::Units(len))
         .height(Length::Units(len))
-        .style(styles::Button::Transparency)
+        .style(theme.transparency_btn())
 }
