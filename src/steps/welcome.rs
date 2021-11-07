@@ -1,12 +1,13 @@
 use {
     super::{Step, StepMessage},
+    crate::states::{I18n, State},
     iced::{Column, Element, Text},
 };
 
 pub struct Welcome;
 
 impl<'a> Step<'a> for Welcome {
-    fn title(&self) -> &str {
+    fn title(&self, _i18n: &I18n) -> &str {
         "Welcome"
     }
 
@@ -14,7 +15,7 @@ impl<'a> Step<'a> for Welcome {
         true
     }
 
-    fn view(&mut self) -> Element<StepMessage> {
+    fn view(&mut self, _state: &State, _i18n: &I18n) -> Element<StepMessage> {
         Column::new()
             .push(Text::new(
                 "This is a simple tour meant to showcase a bunch of widgets \

@@ -1,15 +1,10 @@
-use {
-    crossbeam_utils::atomic::AtomicCell,
-    std::{lazy::SyncLazy, path::PathBuf, sync::RwLock},
-};
+use std::path::PathBuf;
 
 #[derive(Default)]
 pub struct State {
     pub target_type: TargetType,
     pub target_path: PathBuf,
 }
-
-pub static STATE: SyncLazy<RwLock<State>> = SyncLazy::new(|| RwLock::new(State::default()));
 
 #[derive(Debug, Clone, Copy)]
 pub enum TargetType {
@@ -24,8 +19,6 @@ impl Default for TargetType {
     }
 }
 
-pub static I18N: AtomicCell<&I18n> = AtomicCell::new(&EN);
-
 pub struct I18n {
     pub symbol: &'static str,
 
@@ -37,18 +30,13 @@ pub struct I18n {
     pub choose_video: &'static str,
 }
 
-pub fn toggle_i18n() {
-    match {
-        let i18n = I18N.load();
-        i18n.symbol
-    } {
-        "En" => I18N.store(&ZH_CN),
-        "中" => I18N.store(&EN),
-        _ => (),
+impl Default for &I18n {
+    fn default() -> Self {
+        &EN
     }
 }
 
-const EN: I18n = I18n {
+pub const EN: I18n = I18n {
     symbol: "En",
 
     back: " Back",
@@ -59,7 +47,7 @@ const EN: I18n = I18n {
     choose_video: " Choose Video",
 };
 
-const ZH_CN: I18n = I18n {
+pub const ZH_CN: I18n = I18n {
     symbol: "中",
 
     back: " 后退",

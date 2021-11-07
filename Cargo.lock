@@ -1449,7 +1449,6 @@ dependencies = [
 name = "mosaic_video"
 version = "0.1.0"
 dependencies = [
- "crossbeam-utils",
  "iced",
  "rfd",
 ]

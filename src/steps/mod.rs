@@ -1,7 +1,12 @@
 mod choose_target;
 mod welcome;
 
-use {crate::states::TargetType, choose_target::ChooseTarget, iced::Element, welcome::Welcome};
+use {
+    crate::states::{I18n, State, TargetType},
+    choose_target::ChooseTarget,
+    iced::Element,
+    welcome::Welcome,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum StepMessage {
@@ -9,11 +14,11 @@ pub enum StepMessage {
 }
 
 trait Step<'a> {
-    fn title(&self) -> &str;
+    fn title(&self, i18n: &I18n) -> &str;
 
     fn can_next(&self) -> bool;
 
-    fn view(&mut self) -> Element<StepMessage>;
+    fn view(&mut self, state: &State, i18n: &I18n) -> Element<StepMessage>;
 }
 
 const STEPS_NUM: usize = 2;
@@ -31,8 +36,8 @@ impl Steps<'_> {
         }
     }
 
-    pub fn title(&self) -> &str {
-        self.steps[self.cur].title()
+    pub fn title(&self, i18n: &I18n) -> &str {
+        self.steps[self.cur].title(i18n)
     }
 
     pub fn can_back(&self) -> bool {
@@ -55,8 +60,8 @@ impl Steps<'_> {
         }
     }
 
-    pub fn view(&mut self) -> Element<StepMessage> {
-        self.steps[self.cur].view()
+    pub fn view(&mut self, state: &State, i18n: &I18n) -> Element<StepMessage> {
+        self.steps[self.cur].view(state, i18n)
     }
 }
 

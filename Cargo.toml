@@ -13,10 +13,6 @@ repository = "https://github.com/YXL76/MosaicVideo"
 [dependencies]
 rfd = "0.5"
 
-[dependencies.crossbeam-utils]
-version = "0.8"
-default-features = false
-
 [dependencies.iced]
 git = "https://github.com/iced-rs/iced"
 features = ["image"]
