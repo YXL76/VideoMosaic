@@ -1,7 +1,7 @@
 use {
     super::{Step, StepMessage},
     crate::{
-        states::{I18n, State, TargetType},
+        states::{State, TargetType},
         styles::spacings,
         widgets::pri_btn,
     },
@@ -15,26 +15,26 @@ pub struct ChooseTarget {
 }
 
 impl<'a> Step<'a> for ChooseTarget {
-    fn title(&self, i18n: &I18n) -> &str {
-        i18n.choose_target
+    fn title(&self, state: &State) -> &str {
+        state.i18n.choose_target
     }
 
     fn can_next(&self) -> bool {
         true
     }
 
-    fn view(&mut self, state: &State, i18n: &I18n) -> Element<StepMessage> {
+    fn view(&mut self, state: &State) -> Element<StepMessage> {
         let left_side: Element<_> = Column::new()
             .padding(spacings::_4)
             .spacing(spacings::_4)
             .push(Space::with_height(Length::FillPortion(1)))
             .push(
-                pri_btn(&mut self.image_btn, i18n.choose_image, spacings::_32)
+                pri_btn(&mut self.image_btn, state.i18n.choose_image, spacings::_32)
                     .on_press(StepMessage::TargetType(TargetType::Image)),
             )
             .push(Space::with_height(Length::Units(spacings::_3)))
             .push(
-                pri_btn(&mut self.video_btn, i18n.choose_video, spacings::_32)
+                pri_btn(&mut self.video_btn, state.i18n.choose_video, spacings::_32)
                     .on_press(StepMessage::TargetType(TargetType::Video)),
             )
             .push(Space::with_height(Length::FillPortion(1)))

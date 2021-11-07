@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 #[derive(Default)]
 pub struct State {
+    pub i18n: &'static I18n,
     pub target_type: TargetType,
     pub target_path: PathBuf,
 }

@@ -3,19 +3,22 @@ use {
     iced::{alignment, button, Button, Length, Text},
 };
 
+fn center_text(label: &str) -> Text {
+    Text::new(label)
+        .horizontal_alignment(alignment::Horizontal::Center)
+        .vertical_alignment(alignment::Vertical::Center)
+}
+
 fn btn<'a, Message: Clone>(
     state: &'a mut button::State,
     label: &str,
     len: u16,
     style: impl button::StyleSheet + 'static,
 ) -> Button<'a, Message> {
-    Button::new(
-        state,
-        Text::new(label).horizontal_alignment(alignment::Horizontal::Center),
-    )
-    .padding(spacings::_3)
-    .width(Length::Units(len))
-    .style(style)
+    Button::new(state, center_text(label))
+        .padding(spacings::_3)
+        .width(Length::Units(len))
+        .style(style)
 }
 
 pub fn pri_btn<'a, Message: Clone>(
@@ -39,13 +42,8 @@ pub fn rou_btn<'a, Message: Clone>(
     label: &str,
     len: u16,
 ) -> Button<'a, Message> {
-    Button::new(
-        state,
-        Text::new(label)
-            .horizontal_alignment(alignment::Horizontal::Center)
-            .vertical_alignment(alignment::Vertical::Center),
-    )
-    .width(Length::Units(len))
-    .height(Length::Units(len))
-    .style(styles::Button::Transparency)
+    Button::new(state, center_text(label))
+        .width(Length::Units(len))
+        .height(Length::Units(len))
+        .style(styles::Button::Transparency)
 }

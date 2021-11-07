@@ -10,7 +10,7 @@ use {
         button, scrollable, window, Column, Container, Element, Length, Row, Sandbox, Scrollable,
         Settings, Space, Text,
     },
-    states::{I18n, State, TargetType, EN, ZH_CN},
+    states::{State, TargetType, EN, ZH_CN},
     steps::{StepMessage, Steps},
     styles::{fonts, spacings},
     widgets::{pri_btn, rou_btn, sec_btn},
@@ -31,7 +31,6 @@ pub fn main() -> iced::Result {
 
 #[derive(Default)]
 struct MosaicVideo<'a> {
-    i18n: &'static I18n,
     state: State,
 
     scroll: scrollable::State,
@@ -58,14 +57,14 @@ impl<'a> Sandbox for MosaicVideo<'a> {
     }
 
     fn title(&self) -> String {
-        format!("{} - Mosaic Video", self.steps.title(self.i18n))
+        format!("{} - Mosaic Video", self.steps.title(&self.state))
     }
 
     fn update(&mut self, message: Message) {
         match message {
-            Message::I18nPressed => match self.i18n.symbol {
-                "En" => self.i18n = &ZH_CN,
-                "中" => self.i18n = &EN,
+            Message::I18nPressed => match self.state.i18n.symbol {
+                "En" => self.state.i18n = &ZH_CN,
+                "中" => self.state.i18n = &EN,
                 _ => (),
             },
             Message::BackPressed => self.steps.back(),
@@ -103,45 +102,49 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                     .width(Length::Fill),
             )
             .push(
-                rou_btn(&mut self.i18n_btn, self.i18n.symbol, spacings::_12)
+                rou_btn(&mut self.i18n_btn, self.state.i18n.symbol, spacings::_12)
                     .on_press(Message::I18nPressed),
             );
 
-        let controls = match (self.steps.can_back(), self.steps.can_next()) {
-            (true, true) => Row::new()
-                .push(
-                    sec_btn(&mut self.back_btn, self.i18n.back, spacings::_24)
-                        .on_press(Message::BackPressed),
-                )
-                .push(Space::with_width(Length::Units(10)))
-                .push(
-                    pri_btn(&mut self.next_btn, self.i18n.next, spacings::_24)
-                        .on_press(Message::NextPressed),
-                ),
+        let control_items: Option<[Element<_>; 3]> =
+            match (self.steps.can_back(), self.steps.can_next()) {
+                (true, true) => Some([
+                    sec_btn(&mut self.back_btn, self.state.i18n.back, spacings::_24)
+                        .on_press(Message::BackPressed)
+                        .into(),
+                    Space::with_width(Length::Units(10)).into(),
+                    pri_btn(&mut self.next_btn, self.state.i18n.next, spacings::_24)
+                        .on_press(Message::NextPressed)
+                        .into(),
+                ]),
 
-            (true, false) => Row::new()
-                .push(
-                    sec_btn(&mut self.back_btn, self.i18n.back, spacings::_24)
-                        .on_press(Message::BackPressed),
-                )
-                .push(Space::with_width(Length::Units(10 + spacings::_24))),
+                (true, false) => Some([
+                    sec_btn(&mut self.back_btn, self.state.i18n.back, spacings::_24)
+                        .on_press(Message::BackPressed)
+                        .into(),
+                    Space::with_width(Length::Units(10)).into(),
+                    Space::with_width(Length::Units(spacings::_24)).into(),
+                ]),
 
-            (false, true) => Row::new()
-                .push(Space::with_width(Length::Units(10 + spacings::_24)))
-                .push(
-                    pri_btn(&mut self.next_btn, self.i18n.next, spacings::_24)
-                        .on_press(Message::NextPressed),
-                ),
+                (false, true) => Some([
+                    Space::with_width(Length::Units(10)).into(),
+                    Space::with_width(Length::Units(spacings::_24)).into(),
+                    pri_btn(&mut self.next_btn, self.state.i18n.next, spacings::_24)
+                        .on_press(Message::NextPressed)
+                        .into(),
+                ]),
 
-            (false, false) => Row::new(),
-        };
+                (false, false) => None,
+            };
+        let mut controls = Row::new();
+        if let Some(items) = control_items {
+            for item in items {
+                controls = controls.push(item);
+            }
+        }
 
         let scrollable = Scrollable::new(&mut self.scroll)
-            .push(
-                self.steps
-                    .view(&self.state, self.i18n)
-                    .map(Message::StepMessage),
-            )
+            .push(self.steps.view(&self.state).map(Message::StepMessage))
             .height(Length::Fill);
 
         let content = Column::new()
