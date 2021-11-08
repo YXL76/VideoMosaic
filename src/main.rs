@@ -5,10 +5,11 @@ mod widgets;
 
 use {
     iced::{
-        button, scrollable, window, Column, Container, Element, Length, Row, Sandbox, Scrollable,
-        Settings, Space, Text,
+        button, window, Column, Container, Element, Length, Row, Sandbox, Settings, Space, Text,
     },
+    rfd::FileDialog,
     states::{State, TargetType, EN, ZH_CN},
+    std::fs::read_dir,
     steps::{StepMessage, Steps},
     styles::{spacings, Theme},
     widgets::{btn_icon, btn_text, pri_btn, rou_btn, sec_btn},
@@ -30,7 +31,6 @@ pub fn main() -> iced::Result {
 struct MosaicVideo<'a> {
     state: State,
 
-    scroll: scrollable::State,
     i18n_btn: button::State,
     theme_btn: button::State,
     back_btn: button::State,
@@ -60,6 +60,9 @@ impl<'a> Sandbox for MosaicVideo<'a> {
     }
 
     fn update(&mut self, message: Message) {
+        const IMAGE_FILTER: [&str; 3] = ["png", "jpg", "jpeg"];
+        const VIDEO_FILTER: [&str; 1] = ["mp4"];
+
         let Self { state, steps, .. } = self;
 
         match message {
@@ -75,17 +78,17 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                 }
             }
             Message::BackPressed => steps.back(),
-            Message::NextPressed => steps.next(),
+            Message::NextPressed => steps.next(state),
 
             Message::StepMessage(step_message) => match step_message {
                 StepMessage::TargetType(target_type) => {
                     let pick_res = match target_type {
-                        TargetType::Image => rfd::FileDialog::new()
-                            .add_filter("image", &["png", "jpg", "jpeg"])
+                        TargetType::Image => FileDialog::new()
+                            .add_filter("image", &IMAGE_FILTER)
                             .set_title("Choose Image")
                             .pick_file(),
-                        TargetType::Video => rfd::FileDialog::new()
-                            .add_filter("video", &["mp4"])
+                        TargetType::Video => FileDialog::new()
+                            .add_filter("video", &VIDEO_FILTER)
                             .set_title("Choose Video")
                             .pick_file(),
                         TargetType::None => None,
@@ -97,6 +100,33 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                         state.target_type = TargetType::None;
                     }
                 }
+
+                StepMessage::AddLocalLibrary => {
+                    if let Some(folder) = FileDialog::new().pick_folder().as_ref() {
+                        let dir = folder.clone();
+                        if let Ok(entries) = read_dir(folder) {
+                            let entries = entries
+                                .filter_map(|res| {
+                                    if let Ok(entry) = res.as_ref() {
+                                        let path = entry.path();
+                                        let ext = path
+                                            .extension()
+                                            .unwrap_or_default()
+                                            .to_str()
+                                            .unwrap_or_default();
+                                        if path.is_file() && IMAGE_FILTER.contains(&ext) {
+                                            return Some(path);
+                                        }
+                                    };
+                                    None
+                                })
+                                .collect::<Vec<_>>();
+                            if entries.len() > 0 {
+                                state.libraries.insert(dir, entries);
+                            }
+                        }
+                    }
+                }
             },
         }
     }
@@ -105,7 +135,6 @@ impl<'a> Sandbox for MosaicVideo<'a> {
         let title = self.title();
         let Self {
             state,
-            scroll,
             i18n_btn,
             theme_btn,
             back_btn,
@@ -132,7 +161,8 @@ impl<'a> Sandbox for MosaicVideo<'a> {
         let next_i = btn_icon(" \u{f142}");
         let next_l = btn_text(state.i18n.next);
         let btn_w = spacings::_24;
-        let control_items: Option<[Element<_>; 3]> = match (steps.can_back(), steps.can_next()) {
+        let control_items: Option<[Element<_>; 3]> = match (steps.can_back(), steps.can_next(state))
+        {
             (true, true) => Some([
                 sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
                     .on_press(Message::BackPressed)
@@ -168,16 +198,12 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             }
         }
 
-        let scrollable = Scrollable::new(scroll)
-            .push(steps.view(state).map(Message::StepMessage))
-            .height(Length::Fill);
-
         let content = Column::new()
-            .max_width(960)
+            .max_width(1024)
             .padding(spacings::_10)
             .spacing(spacings::_6)
             .push(header)
-            .push(scrollable)
+            .push(steps.view(state).map(Message::StepMessage))
             .push(Container::new(controls).width(Length::Fill).center_x());
 
         Container::new(content)

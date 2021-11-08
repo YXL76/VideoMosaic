@@ -1,4 +1,7 @@
-use {crate::styles::Theme, std::path::PathBuf};
+use {
+    crate::styles::Theme,
+    std::{collections::HashMap, path::PathBuf},
+};
 
 #[derive(Default)]
 pub struct State {
@@ -6,9 +9,10 @@ pub struct State {
     pub theme: Theme,
     pub target_type: TargetType,
     pub target_path: PathBuf,
+    pub libraries: HashMap<PathBuf, Vec<PathBuf>>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TargetType {
     None,
     Image,
@@ -30,6 +34,8 @@ pub struct I18n {
     pub choose_target: &'static str,
     pub choose_image: &'static str,
     pub choose_video: &'static str,
+
+    pub choose_library: &'static str,
 }
 
 impl Default for &I18n {
@@ -47,6 +53,8 @@ pub const EN: I18n = I18n {
     choose_target: "Choose Target",
     choose_image: "Choose Image",
     choose_video: "Choose Video",
+
+    choose_library: "Choose Library",
 };
 
 pub const ZH_CN: I18n = I18n {
@@ -58,4 +66,6 @@ pub const ZH_CN: I18n = I18n {
     choose_target: "选择目标",
     choose_image: "选择图片",
     choose_video: "选择视频",
+
+    choose_library: "选择图片库",
 };

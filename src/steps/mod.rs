@@ -1,22 +1,23 @@
+mod choose_library;
 mod choose_target;
-mod welcome;
 
 use {
     crate::states::{State, TargetType},
+    choose_library::ChooseLibrary,
     choose_target::ChooseTarget,
     iced::Element,
-    welcome::Welcome,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub enum StepMessage {
     TargetType(TargetType),
+    AddLocalLibrary,
 }
 
 trait Step<'a> {
     fn title(&self, state: &State) -> &str;
 
-    fn can_next(&self) -> bool;
+    fn can_next(&self, state: &State) -> bool;
 
     fn view(&mut self, state: &State) -> Element<StepMessage>;
 }
@@ -32,7 +33,10 @@ impl Steps<'_> {
     fn new() -> Self {
         Self {
             cur: 0,
-            steps: [Box::new(Welcome), Box::new(ChooseTarget::default())],
+            steps: [
+                Box::new(ChooseTarget::default()),
+                Box::new(ChooseLibrary::default()),
+            ],
         }
     }
 
@@ -44,8 +48,8 @@ impl Steps<'_> {
         self.cur > 0
     }
 
-    pub fn can_next(&self) -> bool {
-        self.cur < STEPS_NUM - 1 && self.steps[self.cur].can_next()
+    pub fn can_next(&self, state: &State) -> bool {
+        self.cur < STEPS_NUM - 1 && self.steps[self.cur].can_next(state)
     }
 
     pub fn back(&mut self) {
@@ -54,8 +58,8 @@ impl Steps<'_> {
         }
     }
 
-    pub fn next(&mut self) {
-        if self.can_next() {
+    pub fn next(&mut self, state: &State) {
+        if self.can_next(state) {
             self.cur += 1;
         }
     }
