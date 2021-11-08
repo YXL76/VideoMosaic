@@ -3,7 +3,7 @@ use {
     crate::{
         states::State,
         styles::spacings,
-        widgets::{btn_icon, btn_text, pri_btn},
+        widgets::{btn_icon, btn_text, pri_btn, tra_btn},
     },
     iced::{button, scrollable, Column, Element, Length, Row, Scrollable, Text},
 };
@@ -13,6 +13,7 @@ pub struct ChooseLibrary {
     left_scroll: scrollable::State,
     right_scroll: scrollable::State,
     local_btn: button::State,
+    library_btn: Vec<button::State>,
 }
 
 impl<'a> Step<'a> for ChooseLibrary {
@@ -29,19 +30,48 @@ impl<'a> Step<'a> for ChooseLibrary {
             left_scroll,
             right_scroll,
             local_btn,
+            library_btn,
         } = self;
 
-        let cl_i = btn_icon("\u{f256} ");
-        let cl_l = btn_text(state.i18n.choose_library);
-
-        let mut left_side = Scrollable::new(left_scroll);
-        let mut right_side = Scrollable::new(right_scroll);
-        for (library, files) in state.libraries.iter() {
-            left_side = left_side.push(Text::new(library.to_str().unwrap_or_default()));
-            for file in files {
-                right_side = right_side.push(Text::new(file.to_str().unwrap_or_default()));
-            }
+        while library_btn.len() > state.libraries.len() {
+            library_btn.pop();
         }
+        while library_btn.len() < state.libraries.len() {
+            library_btn.push(button::State::default());
+        }
+
+        let left_side = state.libraries.keys().zip(library_btn.iter_mut()).fold(
+            Scrollable::new(left_scroll).spacing(spacings::_2),
+            |scroll, (library, btn)| {
+                let icon = btn_icon("\u{f76f} ");
+                let label = btn_text(library.to_str().unwrap_or_default());
+                scroll.push(
+                    tra_btn(btn, icon, label, spacings::_128, &state.theme)
+                        .on_press(StepMessage::DeleteLocalLibrary(library.into())),
+                )
+            },
+        );
+        let mut count = 0;
+        let right_side =
+            state
+                .libraries
+                .values()
+                .fold(Scrollable::new(right_scroll), |scroll, files| {
+                    files.iter().fold(scroll, |scroll, file| {
+                        count += 1;
+                        let row = Row::new()
+                            .push(
+                                Text::new(format!("{:0>3}.", count))
+                                    .width(Length::Units(spacings::_10))
+                                    .size(spacings::_6),
+                            )
+                            .push(Text::new(file.to_str().unwrap_or_default()).size(spacings::_6));
+                        scroll.push(row)
+                    })
+                });
+
+        let cl_i = btn_icon("\u{f254} ");
+        let cl_l = btn_text(state.i18n.choose_library);
         let left_side = Column::new()
             .spacing(spacings::_4)
             .push(

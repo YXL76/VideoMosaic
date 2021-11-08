@@ -6,12 +6,14 @@ use {
     choose_library::ChooseLibrary,
     choose_target::ChooseTarget,
     iced::Element,
+    std::path::PathBuf,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum StepMessage {
     TargetType(TargetType),
     AddLocalLibrary,
+    DeleteLocalLibrary(PathBuf),
 }
 
 trait Step<'a> {

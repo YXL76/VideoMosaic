@@ -7,7 +7,7 @@ use {
     iced::{
         button, window, Column, Container, Element, Length, Row, Sandbox, Settings, Space, Text,
     },
-    rfd::FileDialog,
+    rfd::{FileDialog, MessageButtons, MessageDialog},
     states::{State, TargetType, EN, ZH_CN},
     std::fs::read_dir,
     steps::{StepMessage, Steps},
@@ -39,7 +39,7 @@ struct MosaicVideo<'a> {
     steps: Steps<'a>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Message {
     I18nPressed,
     ThemePressed,
@@ -125,6 +125,17 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                                 state.libraries.insert(dir, entries);
                             }
                         }
+                    }
+                }
+
+                StepMessage::DeleteLocalLibrary(folder) => {
+                    if MessageDialog::new()
+                        .set_title(state.i18n.delete)
+                        .set_description(state.i18n.delete_desc)
+                        .set_buttons(MessageButtons::YesNo)
+                        .show()
+                    {
+                        state.libraries.remove(&folder);
                     }
                 }
             },

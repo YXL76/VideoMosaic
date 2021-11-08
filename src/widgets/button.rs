@@ -63,6 +63,16 @@ pub fn sec_btn<'a, Message: 'a + Clone>(
     btn(state, left, right, len, theme.secondary_btn())
 }
 
+pub fn tra_btn<'a, Message: 'a + Clone>(
+    state: &'a mut button::State,
+    left: BtnText,
+    right: BtnText,
+    len: u16,
+    theme: &Theme,
+) -> Button<'a, Message> {
+    btn(state, left, right, len, theme.transparency_btn())
+}
+
 pub fn rou_btn<'a, Message: 'a + Clone>(
     state: &'a mut button::State,
     label: BtnText,

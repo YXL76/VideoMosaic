@@ -36,6 +36,8 @@ pub struct I18n {
     pub choose_video: &'static str,
 
     pub choose_library: &'static str,
+    pub delete: &'static str,
+    pub delete_desc: &'static str,
 }
 
 impl Default for &I18n {
@@ -55,6 +57,8 @@ pub const EN: I18n = I18n {
     choose_video: "Choose Video",
 
     choose_library: "Choose Library",
+    delete: "Delete",
+    delete_desc: "Are you sure to delete?",
 };
 
 pub const ZH_CN: I18n = I18n {
@@ -68,4 +72,6 @@ pub const ZH_CN: I18n = I18n {
     choose_video: "选择视频",
 
     choose_library: "选择图片库",
+    delete: "删除",
+    delete_desc: "你确定要删除吗？",
 };
