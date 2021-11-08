@@ -10,8 +10,8 @@ use {
     },
     states::{State, TargetType, EN, ZH_CN},
     steps::{StepMessage, Steps},
-    styles::{fonts, spacings, Theme},
-    widgets::{pri_btn, rou_btn, sec_btn},
+    styles::{spacings, Theme},
+    widgets::{btn_icon, btn_text, pri_btn, rou_btn, sec_btn},
 };
 
 pub fn main() -> iced::Result {
@@ -22,7 +22,6 @@ pub fn main() -> iced::Result {
         },
         text_multithreading: true,
         antialiasing: false,
-        default_font: Some(fonts::REGULAR_BYTES),
         ..Settings::default()
     })
 }
@@ -114,34 +113,38 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             steps,
         } = self;
 
+        let i18n_l = btn_text(state.i18n.symbol);
+        let theme_l = btn_icon(state.theme.symbol());
         let header = Row::new()
             .push(Text::new(title).size(spacings::_12).width(Length::Fill))
             .push(
-                rou_btn(i18n_btn, state.i18n.symbol, spacings::_12, &state.theme)
+                rou_btn(i18n_btn, i18n_l, spacings::_12, &state.theme)
                     .on_press(Message::I18nPressed),
             )
             .push(Space::with_width(Length::Units(spacings::_3)))
             .push(
-                rou_btn(theme_btn, state.theme.symbol(), spacings::_12, &state.theme)
+                rou_btn(theme_btn, theme_l, spacings::_12, &state.theme)
                     .on_press(Message::ThemePressed),
             );
 
-        let back_l = state.i18n.back;
-        let next_l = state.i18n.next;
+        let back_i = btn_icon("\u{f141} ");
+        let back_l = btn_text(state.i18n.back);
+        let next_i = btn_icon(" \u{f142}");
+        let next_l = btn_text(state.i18n.next);
         let btn_w = spacings::_24;
         let control_items: Option<[Element<_>; 3]> = match (steps.can_back(), steps.can_next()) {
             (true, true) => Some([
-                sec_btn(back_btn, back_l, btn_w, &state.theme)
+                sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
                     .on_press(Message::BackPressed)
                     .into(),
                 Space::with_width(Length::Units(10)).into(),
-                pri_btn(next_btn, next_l, btn_w, &state.theme)
+                pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
                     .on_press(Message::NextPressed)
                     .into(),
             ]),
 
             (true, false) => Some([
-                sec_btn(back_btn, back_l, btn_w, &state.theme)
+                sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
                     .on_press(Message::BackPressed)
                     .into(),
                 Space::with_width(Length::Units(10)).into(),
@@ -151,7 +154,7 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             (false, true) => Some([
                 Space::with_width(Length::Units(10)).into(),
                 Space::with_width(Length::Units(btn_w)).into(),
-                pri_btn(next_btn, next_l, btn_w, &state.theme)
+                pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
                     .on_press(Message::NextPressed)
                     .into(),
             ]),
@@ -171,8 +174,8 @@ impl<'a> Sandbox for MosaicVideo<'a> {
 
         let content = Column::new()
             .max_width(960)
-            .padding(spacings::_8)
-            .spacing(spacings::_8)
+            .padding(spacings::_10)
+            .spacing(spacings::_6)
             .push(header)
             .push(scrollable)
             .push(Container::new(controls).width(Length::Fill).center_x());

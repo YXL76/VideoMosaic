@@ -41,21 +41,21 @@ impl Default for &I18n {
 pub const EN: I18n = I18n {
     symbol: "En",
 
-    back: " Back",
-    next: "Next ",
+    back: "Back",
+    next: "Next",
 
     choose_target: "Choose Target",
-    choose_image: " Choose Image",
-    choose_video: " Choose Video",
+    choose_image: "Choose Image",
+    choose_video: "Choose Video",
 };
 
 pub const ZH_CN: I18n = I18n {
     symbol: "中",
 
-    back: " 后退",
-    next: "前进 ",
+    back: "后退",
+    next: "前进",
 
     choose_target: "选择目标",
-    choose_image: " 选择图片",
-    choose_video: " 选择视频",
+    choose_image: "选择图片",
+    choose_video: "选择视频",
 };

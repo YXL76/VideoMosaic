@@ -1,41 +1,70 @@
 use {
     super::super::{colors, spacings},
-    iced::{button, Background, Color, Vector},
+    iced::{button, Color, Vector},
 };
 
-pub enum Button {
-    Primary,
-    Secondary,
-    Transparency,
-}
+pub struct Primary;
 
-impl button::StyleSheet for Button {
+impl button::StyleSheet for Primary {
     fn active(&self) -> button::Style {
         button::Style {
-            background: Some(Background::Color(match self {
-                Button::Primary => colors::blue::_500,
-                Button::Secondary => colors::cool_gray::_500,
-                Button::Transparency => Color::WHITE,
-            })),
+            background: Some(colors::blue::_500.into()),
             border_radius: spacings::_3 as f32,
             shadow_offset: Vector::new(1.0, 1.0),
-            text_color: match self {
-                Button::Transparency => colors::cool_gray::_800,
-                _ => colors::gray::_100,
-            },
+            text_color: colors::gray::_100,
             ..button::Style::default()
         }
     }
 
     fn hovered(&self) -> button::Style {
-        let active = self.active();
         button::Style {
-            text_color: match self {
-                Button::Transparency => colors::cool_gray::_800,
-                _ => Color::WHITE,
-            },
+            text_color: Color::WHITE,
             shadow_offset: Vector::new(1.0, 2.0),
-            ..active
+            ..self.active()
+        }
+    }
+}
+
+pub struct Secondary;
+
+impl button::StyleSheet for Secondary {
+    fn active(&self) -> button::Style {
+        button::Style {
+            background: Some(colors::cool_gray::_600.into()),
+            border_radius: spacings::_3 as f32,
+            shadow_offset: Vector::new(1.0, 1.0),
+            text_color: colors::gray::_100,
+            ..button::Style::default()
+        }
+    }
+
+    fn hovered(&self) -> button::Style {
+        button::Style {
+            text_color: Color::WHITE,
+            shadow_offset: Vector::new(1.0, 2.0),
+            ..self.active()
+        }
+    }
+}
+
+pub struct Transparency;
+
+impl button::StyleSheet for Transparency {
+    fn active(&self) -> button::Style {
+        button::Style {
+            background: Some(colors::blue_gray::_800.into()),
+            border_radius: spacings::_3 as f32,
+            shadow_offset: Vector::new(1.0, 1.0),
+            text_color: colors::gray::_100,
+            ..button::Style::default()
+        }
+    }
+
+    fn hovered(&self) -> button::Style {
+        button::Style {
+            text_color: Color::WHITE,
+            shadow_offset: Vector::new(1.0, 2.0),
+            ..self.active()
         }
     }
 }
