@@ -1,7 +1,7 @@
 use {
     super::{Step, StepMessage},
     crate::{
-        states::{State, TargetType},
+        states::State,
         styles::spacings,
         widgets::{btn_icon, btn_text, pri_btn},
     },
@@ -35,8 +35,12 @@ impl<'a> Step<'a> for ChooseLibrary {
         let cl_l = btn_text(state.i18n.choose_library);
 
         let mut left_side = Scrollable::new(left_scroll);
-        for library in state.libraries.keys() {
-            left_side = left_side.push(Text::new(library.to_str().unwrap_or_default()))
+        let mut right_side = Scrollable::new(right_scroll);
+        for (library, files) in state.libraries.iter() {
+            left_side = left_side.push(Text::new(library.to_str().unwrap_or_default()));
+            for file in files {
+                right_side = right_side.push(Text::new(file.to_str().unwrap_or_default()));
+            }
         }
         let left_side = Column::new()
             .spacing(spacings::_4)
@@ -44,20 +48,12 @@ impl<'a> Step<'a> for ChooseLibrary {
                 pri_btn(local_btn, cl_i, cl_l, spacings::_32, &state.theme)
                     .on_press(StepMessage::AddLocalLibrary),
             )
-            .push(left_side)
-            .width(Length::FillPortion(7));
-
-        let mut right_side = Scrollable::new(right_scroll).width(Length::FillPortion(10));
-        for files in state.libraries.values() {
-            for file in files {
-                right_side = right_side.push(Text::new(file.to_str().unwrap_or_default()))
-            }
-        }
+            .push(left_side);
 
         Row::new()
             .spacing(spacings::_4)
-            .push(left_side)
-            .push(right_side)
+            .push(left_side.width(Length::FillPortion(7)))
+            .push(right_side.width(Length::FillPortion(10)))
             .height(Length::Fill)
             .into()
     }
