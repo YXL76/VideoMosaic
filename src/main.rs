@@ -138,6 +138,8 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                         state.libraries.remove(&folder);
                     }
                 }
+
+                StepMessage::Spider => (),
             },
         }
     }

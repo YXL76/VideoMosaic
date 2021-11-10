@@ -14,6 +14,7 @@ pub enum StepMessage {
     TargetType(TargetType),
     AddLocalLibrary,
     DeleteLocalLibrary(PathBuf),
+    Spider,
 }
 
 trait Step<'a> {

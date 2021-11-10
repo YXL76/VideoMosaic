@@ -36,6 +36,7 @@ pub struct I18n {
     pub choose_video: &'static str,
 
     pub choose_library: &'static str,
+    pub from_the_web: &'static str,
     pub delete: &'static str,
     pub delete_desc: &'static str,
 }
@@ -57,6 +58,7 @@ pub const EN: I18n = I18n {
     choose_video: "Choose Video",
 
     choose_library: "Choose Library",
+    from_the_web: "From the Web",
     delete: "Delete",
     delete_desc: "Are you sure to delete?",
 };
@@ -68,6 +70,7 @@ pub const ZH_CN: I18n = I18n {
     next: "前进",
 
     choose_target: "选择目标",
+    from_the_web: "来自网络",
     choose_image: "选择图片",
     choose_video: "选择视频",
 
