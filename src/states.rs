@@ -3,6 +3,8 @@ use {
     std::{collections::HashMap, path::PathBuf},
 };
 
+pub const LIBRARY_BTN_CNT: usize = 16;
+
 #[derive(Default)]
 pub struct State {
     pub i18n: &'static I18n,

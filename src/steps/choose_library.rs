@@ -1,7 +1,7 @@
 use {
     super::{Step, StepMessage},
     crate::{
-        states::State,
+        states::{State, LIBRARY_BTN_CNT},
         styles::spacings,
         widgets::{btn_icon, btn_text, pri_btn, tra_btn},
     },
@@ -14,7 +14,7 @@ pub struct ChooseLibrary {
     right_scroll: scrollable::State,
     local_btn: button::State,
     spider_btn: button::State,
-    library_btn: Vec<button::State>,
+    library_btn: [button::State; LIBRARY_BTN_CNT],
 }
 
 impl<'a> Step<'a> for ChooseLibrary {
@@ -34,13 +34,6 @@ impl<'a> Step<'a> for ChooseLibrary {
             spider_btn,
             library_btn,
         } = self;
-
-        while library_btn.len() > state.libraries.len() {
-            library_btn.pop();
-        }
-        while library_btn.len() < state.libraries.len() {
-            library_btn.push(button::State::default());
-        }
 
         let left_side = state.libraries.keys().zip(library_btn.iter_mut()).fold(
             Scrollable::new(left_scroll).spacing(spacings::_4),

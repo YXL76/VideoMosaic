@@ -8,7 +8,7 @@ use {
         button, window, Column, Container, Element, Length, Row, Sandbox, Settings, Space, Text,
     },
     rfd::{FileDialog, MessageButtons, MessageDialog},
-    states::{State, TargetType, EN, ZH_CN},
+    states::{State, TargetType, EN, LIBRARY_BTN_CNT, ZH_CN},
     std::fs::read_dir,
     steps::{StepMessage, Steps},
     styles::{spacings, Theme},
@@ -101,7 +101,7 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                     }
                 }
 
-                StepMessage::AddLocalLibrary => {
+                StepMessage::AddLocalLibrary if state.libraries.len() < LIBRARY_BTN_CNT => {
                     if let Some(folder) = FileDialog::new().pick_folder().as_ref() {
                         let dir = folder.clone();
                         if let Ok(entries) = read_dir(folder) {
@@ -140,6 +140,8 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                 }
 
                 StepMessage::Spider => (),
+
+                _ => (),
             },
         }
     }
