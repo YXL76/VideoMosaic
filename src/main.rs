@@ -16,6 +16,7 @@ use {
 };
 
 pub fn main() -> iced::Result {
+    image_diff::init().unwrap();
     MosaicVideo::run(Settings {
         window: window::Settings {
             position: window::Position::Centered,

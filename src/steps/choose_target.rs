@@ -6,8 +6,10 @@ use {
         widgets::{btn_icon, btn_text, pri_btn},
     },
     iced::{
-        alignment, button, scrollable, Column, Element, Image, Length, Row, Scrollable, Space, Text,
+        alignment, button, image, scrollable, Column, Element, Image, Length, Row, Scrollable,
+        Space, Text,
     },
+    image_diff::first_frame,
 };
 
 #[derive(Default)]
@@ -54,13 +56,28 @@ impl<'a> Step<'a> for ChooseTarget {
             .push(Space::with_height(Length::FillPortion(1)))
             .max_height(spacings::_128 as u32);
 
-        let path = state.target_path.to_str().unwrap_or("");
-        let right_side = Column::new()
-            .push(Image::new(path))
-            .push(Text::new(path))
+        let mut right_side = Column::new()
             .padding(spacings::_4)
             .width(Length::Fill)
             .align_items(alignment::Alignment::Center);
+        let path = state.target_path.to_str().unwrap_or("");
+        match state.target_type {
+            TargetType::Image => {
+                right_side = right_side
+                    .push(Image::new(path).width(Length::Fill))
+                    .push(Text::new(path))
+            }
+            TargetType::Video => {
+                if let Ok((width, height, pixels)) = first_frame(&state.target_path) {
+                    println!("{}", pixels.len());
+                    let img = image::Handle::from_pixels(width, height, pixels);
+                    right_side = right_side
+                        .push(Image::new(img).width(Length::Fill))
+                        .push(Text::new(path));
+                }
+            }
+            _ => (),
+        };
 
         Scrollable::new(scroll)
             .push(
