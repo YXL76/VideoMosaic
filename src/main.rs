@@ -8,9 +8,9 @@ use {
         button, window, Column, Container, Element, Length, Row, Sandbox, Settings, Space, Text,
     },
     rfd::{FileDialog, MessageButtons, MessageDialog},
-    states::{State, TargetType, EN, LIBRARY_BTN_CNT, ZH_CN},
+    states::{State, EN, LIBRARY_BTN_CNT, ZH_CN},
     std::fs::read_dir,
-    steps::{StepMessage, Steps},
+    steps::{StepMessage, Steps, TargetType},
     styles::{spacings, Theme},
     widgets::{btn_icon, btn_text, pri_btn, rou_btn, sec_btn},
 };
@@ -140,6 +140,10 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                 }
 
                 StepMessage::Spider => (),
+
+                StepMessage::CalculationUnit(item) => state.calc_unit = item,
+                StepMessage::ColorSpace(item) => state.color_space = item,
+                StepMessage::DistanceAlgorithm(item) => state.dist_algo = item,
 
                 _ => (),
             },

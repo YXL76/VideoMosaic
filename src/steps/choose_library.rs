@@ -46,6 +46,7 @@ impl<'a> Step<'a> for ChooseLibrary {
                 )
             },
         );
+
         let mut count = 0;
         let right_side = state.libraries.values().fold(
             Scrollable::new(right_scroll)
@@ -66,19 +67,17 @@ impl<'a> Step<'a> for ChooseLibrary {
             },
         );
 
-        let cl_i = btn_icon("\u{f254} ");
         let cl_l = btn_text(state.i18n.choose_library);
-        let dp_i = btn_icon("\u{f0e4} ");
         let dp_l = btn_text(state.i18n.from_the_web);
         let left_ctl = Row::new()
             .spacing(spacings::_8)
             .push(
-                pri_btn(local_btn, cl_i, cl_l, spacings::_128, &state.theme)
+                pri_btn(local_btn, btn_icon("\u{f254} "), cl_l, 0, &state.theme)
                     .width(Length::FillPortion(1))
                     .on_press(StepMessage::AddLocalLibrary),
             )
             .push(
-                pri_btn(spider_btn, dp_i, dp_l, spacings::_128, &state.theme)
+                pri_btn(spider_btn, btn_icon("\u{f0e4} "), dp_l, 0, &state.theme)
                     .width(Length::FillPortion(1))
                     .on_press(StepMessage::Spider),
             );

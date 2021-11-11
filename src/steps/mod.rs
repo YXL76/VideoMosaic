@@ -1,13 +1,18 @@
 mod choose_library;
+mod choose_method;
 mod choose_target;
 
 use {
-    crate::states::{State, TargetType},
+    crate::states::State,
     choose_library::ChooseLibrary,
+    choose_method::ChooseAlgorithm,
     choose_target::ChooseTarget,
     iced::Element,
+    image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
     std::path::PathBuf,
 };
+
+pub use choose_target::TargetType;
 
 #[derive(Debug, Clone)]
 pub enum StepMessage {
@@ -15,6 +20,9 @@ pub enum StepMessage {
     AddLocalLibrary,
     DeleteLocalLibrary(PathBuf),
     Spider,
+    CalculationUnit(CalculationUnit),
+    ColorSpace(ColorSpace),
+    DistanceAlgorithm(DistanceAlgorithm),
 }
 
 trait Step<'a> {
@@ -25,7 +33,7 @@ trait Step<'a> {
     fn view(&mut self, state: &State) -> Element<StepMessage>;
 }
 
-const STEPS_NUM: usize = 2;
+const STEPS_NUM: usize = 3;
 
 pub struct Steps<'a> {
     cur: usize,
@@ -39,6 +47,7 @@ impl Steps<'_> {
             steps: [
                 Box::new(ChooseTarget::default()),
                 Box::new(ChooseLibrary::default()),
+                Box::new(ChooseAlgorithm::default()),
             ],
         }
     }

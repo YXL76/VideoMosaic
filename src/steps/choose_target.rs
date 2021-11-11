@@ -1,7 +1,7 @@
 use {
     super::{Step, StepMessage},
     crate::{
-        states::{State, TargetType},
+        states::State,
         styles::spacings,
         widgets::{btn_icon, btn_text, pri_btn},
     },
@@ -71,5 +71,18 @@ impl<'a> Step<'a> for ChooseTarget {
             )
             .height(Length::Fill)
             .into()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum TargetType {
+    None,
+    Image,
+    Video,
+}
+
+impl Default for TargetType {
+    fn default() -> Self {
+        Self::None
     }
 }

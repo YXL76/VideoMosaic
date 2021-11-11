@@ -1,5 +1,6 @@
 use {
-    crate::styles::Theme,
+    crate::{steps::TargetType, styles::Theme},
+    image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
     std::{collections::HashMap, path::PathBuf},
 };
 
@@ -12,19 +13,9 @@ pub struct State {
     pub target_type: TargetType,
     pub target_path: PathBuf,
     pub libraries: HashMap<PathBuf, Vec<PathBuf>>,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum TargetType {
-    None,
-    Image,
-    Video,
-}
-
-impl Default for TargetType {
-    fn default() -> Self {
-        TargetType::None
-    }
+    pub calc_unit: CalculationUnit,
+    pub color_space: ColorSpace,
+    pub dist_algo: DistanceAlgorithm,
 }
 
 pub struct I18n {
@@ -41,6 +32,19 @@ pub struct I18n {
     pub from_the_web: &'static str,
     pub delete: &'static str,
     pub delete_desc: &'static str,
+
+    pub choose_algorithm: &'static str,
+    pub calc_unit: &'static str,
+    pub calc_unit_average: &'static str,
+    pub calc_unit_pixel: &'static str,
+    pub calc_unit_k_means: &'static str,
+    pub color_space: &'static str,
+    pub color_space_rgb: &'static str,
+    pub color_space_hsv: &'static str,
+    pub color_space_ciexyz: &'static str,
+    pub dist_algo: &'static str,
+    pub dist_algo_euclidean: &'static str,
+    pub dist_algo_ciede2000: &'static str,
 }
 
 impl Default for &I18n {
@@ -63,6 +67,19 @@ pub const EN: I18n = I18n {
     from_the_web: "From the Web",
     delete: "Delete",
     delete_desc: "Are you sure to delete?",
+
+    choose_algorithm: "Choose Algorithm",
+    calc_unit: "Calculation Unit",
+    calc_unit_average: "Average",
+    calc_unit_pixel: "Pixel",
+    calc_unit_k_means: "K-means",
+    color_space: "Color Space",
+    color_space_rgb: "RGB",
+    color_space_hsv: "HSV",
+    color_space_ciexyz: "CIEXYZ",
+    dist_algo: "Distance Algorithm",
+    dist_algo_euclidean: "Euclidean",
+    dist_algo_ciede2000: "CIEDE2000",
 };
 
 pub const ZH_CN: I18n = I18n {
@@ -79,4 +96,17 @@ pub const ZH_CN: I18n = I18n {
     choose_library: "选择图片库",
     delete: "删除",
     delete_desc: "你确定要删除吗？",
+
+    choose_algorithm: "选择算法",
+    calc_unit: "计算单位",
+    calc_unit_average: "均值",
+    calc_unit_pixel: "像素",
+    calc_unit_k_means: "K-means",
+    color_space: "颜色空间",
+    color_space_rgb: "RGB",
+    color_space_hsv: "HSV",
+    color_space_ciexyz: "CIEXYZ",
+    dist_algo: "距离算法",
+    dist_algo_euclidean: "欧几里德",
+    dist_algo_ciede2000: "CIEDE2000",
 };
