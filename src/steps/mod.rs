@@ -5,7 +5,7 @@ mod choose_target;
 use {
     crate::states::State,
     choose_library::ChooseLibrary,
-    choose_method::ChooseAlgorithm,
+    choose_method::ChooseMethod,
     choose_target::ChooseTarget,
     iced::Element,
     image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
@@ -47,7 +47,7 @@ impl Steps<'_> {
             steps: [
                 Box::new(ChooseTarget::default()),
                 Box::new(ChooseLibrary::default()),
-                Box::new(ChooseAlgorithm::default()),
+                Box::new(ChooseMethod::default()),
             ],
         }
     }

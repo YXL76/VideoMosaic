@@ -63,17 +63,12 @@ impl<'a> Step<'a> for ChooseTarget {
         let path = state.target_path.to_str().unwrap_or("");
         match state.target_type {
             TargetType::Image => {
-                right_side = right_side
-                    .push(Image::new(path).width(Length::Fill))
-                    .push(Text::new(path))
+                right_side = right_side.push(Image::new(path)).push(Text::new(path))
             }
             TargetType::Video => {
                 if let Ok((width, height, pixels)) = first_frame(&state.target_path) {
-                    println!("{}", pixels.len());
                     let img = image::Handle::from_pixels(width, height, pixels);
-                    right_side = right_side
-                        .push(Image::new(img).width(Length::Fill))
-                        .push(Text::new(path));
+                    right_side = right_side.push(Image::new(img)).push(Text::new(path));
                 }
             }
             _ => (),

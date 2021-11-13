@@ -1,5 +1,7 @@
 extern crate ffmpeg_next as ffmpeg;
 
+mod process;
+
 use {
     ffmpeg::{
         format::{input, Pixel},
@@ -9,7 +11,7 @@ use {
     std::path::PathBuf,
 };
 
-pub use ffmpeg::Error;
+pub use {ffmpeg::Error, process::*};
 
 pub fn init() -> Result<(), ffmpeg::Error> {
     ffmpeg::init()

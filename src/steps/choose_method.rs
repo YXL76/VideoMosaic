@@ -6,11 +6,11 @@ use {
 };
 
 #[derive(Default)]
-pub struct ChooseAlgorithm {}
+pub struct ChooseMethod {}
 
-impl<'a> Step<'a> for ChooseAlgorithm {
+impl<'a> Step<'a> for ChooseMethod {
     fn title(&self, state: &State) -> &str {
-        state.i18n.choose_algorithm
+        state.i18n.choose_method
     }
 
     fn can_next(&self, _state: &State) -> bool {
@@ -18,6 +18,17 @@ impl<'a> Step<'a> for ChooseAlgorithm {
     }
 
     fn view(&mut self, state: &State) -> Element<StepMessage> {
+        for i in state.libraries.values() {
+            image_diff::ProcessFactory::new(image_diff::ProcessConfig::new(
+                50,
+                CalculationUnit::Average,
+                ColorSpace::HSV,
+                DistanceAlgorithm::Euclidean,
+            ))
+            .run(&state.target_path, i);
+            break;
+        }
+
         let calc_unit = [
             CalculationUnit::Average,
             CalculationUnit::Pixel,

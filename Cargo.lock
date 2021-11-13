@@ -19,6 +19,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a13739d7177fbd22bb0ed28badfff9f372f8bef46c863db4e1c6248f6b223b6e"
 
 [[package]]
+name = "adler"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
+
+[[package]]
 name = "adler32"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -191,9 +197,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79c2681d6594606957bbb8631c4b90a7fcaaa72cdb714743a437b156d6a7eedd"
+checksum = "22a9137b95ea06864e018375b72adfb7db6e6f68cfc8df5a04d00288050485ee"
 
 [[package]]
 name = "cexpr"
@@ -690,6 +696,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "find-crate"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59a98bbaacea1c0eb6a0876280051b892eb73594fd90cf3b20e9c817029c57d2"
+dependencies = [
+ "toml",
+]
+
+[[package]]
 name = "float-ord"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1146,7 +1161,7 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#eafad00af2a9bae9f3ed8124e2a6f6e59ee5d253"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1159,7 +1174,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#eafad00af2a9bae9f3ed8124e2a6f6e59ee5d253"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "bitflags",
 ]
@@ -1167,7 +1182,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#eafad00af2a9bae9f3ed8124e2a6f6e59ee5d253"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "futures",
  "log",
@@ -1177,7 +1192,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#eafad00af2a9bae9f3ed8124e2a6f6e59ee5d253"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "bytemuck",
  "font-kit",
@@ -1191,7 +1206,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#eafad00af2a9bae9f3ed8124e2a6f6e59ee5d253"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1204,7 +1219,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#eafad00af2a9bae9f3ed8124e2a6f6e59ee5d253"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "iced_core",
 ]
@@ -1212,7 +1227,7 @@ dependencies = [
 [[package]]
 name = "iced_web"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#eafad00af2a9bae9f3ed8124e2a6f6e59ee5d253"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "base64",
  "dodrio",
@@ -1229,7 +1244,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#eafad00af2a9bae9f3ed8124e2a6f6e59ee5d253"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -1249,7 +1264,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#eafad00af2a9bae9f3ed8124e2a6f6e59ee5d253"
+source = "git+https://github.com/iced-rs/iced#f084ed8df154a7f3b0386cfb7e13307f6a6290d0"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -1293,6 +1308,8 @@ dependencies = [
  "num-rational",
  "num-traits",
  "png",
+ "scoped_threadpool",
+ "tiff",
 ]
 
 [[package]]
@@ -1300,6 +1317,9 @@ name = "image_diff"
 version = "0.1.0"
 dependencies = [
  "ffmpeg-next",
+ "image",
+ "kmeans_colors",
+ "palette",
 ]
 
 [[package]]
@@ -1380,6 +1400,16 @@ checksum = "8c2352bd1d0bceb871cb9d40f24360c8133c11d7486b68b5381c1dd1a32015e3"
 dependencies = [
  "libc",
  "libloading 0.7.1",
+]
+
+[[package]]
+name = "kmeans_colors"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45b02102b24e8f7163d7f794f2a250e3b5da067994695521310338da0db6ae2c"
+dependencies = [
+ "rand",
+ "rand_chacha",
 ]
 
 [[package]]
@@ -1516,6 +1546,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "791daaae1ed6889560f8c4359194f56648355540573244a5448a83ba1ecc7435"
 dependencies = [
  "adler32",
+]
+
+[[package]]
+name = "miniz_oxide"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a92518e98c078586bc6c934028adcca4c92a53d6a958196de835170a01d84e4b"
+dependencies = [
+ "adler",
+ "autocfg",
 ]
 
 [[package]]
@@ -1811,6 +1851,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "palette"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9735f7e1e51a3f740bacd5dc2724b61a7806f23597a8736e679f38ee3435d18"
+dependencies = [
+ "approx",
+ "num-traits",
+ "palette_derive",
+]
+
+[[package]]
+name = "palette_derive"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7799c3053ea8a6d8a1193c7ba42f534e7863cf52e378a7f90406f4a645d33bad"
+dependencies = [
+ "find-crate",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "pango-sys"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1914,7 +1977,7 @@ dependencies = [
  "bitflags",
  "crc32fast",
  "deflate",
- "miniz_oxide",
+ "miniz_oxide 0.3.7",
 ]
 
 [[package]]
@@ -2152,6 +2215,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
 
 [[package]]
+name = "scoped_threadpool"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d51f5df5af43ab3f1360b429fa5e0152ac5ce8c0bd6485cae490332e96846a8"
+
+[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2369,10 +2438,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "tinyvec"
-version = "1.5.0"
+name = "tiff"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83b2a3d4d9091d0abd7eba4dc2710b1718583bd4d8992e2190720ea38f391f7"
+checksum = "9a53f4706d65497df0c4349241deddf35f84cee19c87ed86ea8ca590f4464437"
+dependencies = [
+ "jpeg-decoder",
+ "miniz_oxide 0.4.4",
+ "weezl",
+]
+
+[[package]]
+name = "tinyvec"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c1c1d5a42b6245520c249549ec267180beaffcc0615401ac8e31853d4b6d8d2"
 dependencies = [
  "tinyvec_macros",
 ]

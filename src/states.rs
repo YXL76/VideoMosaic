@@ -33,7 +33,7 @@ pub struct I18n {
     pub delete: &'static str,
     pub delete_desc: &'static str,
 
-    pub choose_algorithm: &'static str,
+    pub choose_method: &'static str,
     pub calc_unit: &'static str,
     pub calc_unit_average: &'static str,
     pub calc_unit_pixel: &'static str,
@@ -68,7 +68,7 @@ pub const EN: I18n = I18n {
     delete: "Delete",
     delete_desc: "Are you sure to delete?",
 
-    choose_algorithm: "Choose Algorithm",
+    choose_method: "Choose Method",
     calc_unit: "Calculation Unit",
     calc_unit_average: "Average",
     calc_unit_pixel: "Pixel",
@@ -97,7 +97,7 @@ pub const ZH_CN: I18n = I18n {
     delete: "删除",
     delete_desc: "你确定要删除吗？",
 
-    choose_algorithm: "选择算法",
+    choose_method: "选择方案",
     calc_unit: "计算单位",
     calc_unit_average: "均值",
     calc_unit_pixel: "像素",
