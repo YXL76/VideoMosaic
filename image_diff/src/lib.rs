@@ -64,12 +64,12 @@ impl Default for CalculationUnit {
 pub enum ColorSpace {
     RGB,
     HSV,
-    CIEXYZ,
+    CIELAB,
 }
 
 impl Default for ColorSpace {
     fn default() -> Self {
-        Self::CIEXYZ
+        Self::CIELAB
     }
 }
 

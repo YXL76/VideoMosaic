@@ -1,8 +1,6 @@
 use {
-    super::{Process, ProcessConfig, ProcessResult},
-    crate::ColorSpace,
+    super::{Converter, Distance, Process, ProcessResult},
     image::{self, imageops::FilterType, ImageBuffer, RgbImage},
-    palette::{Hsv, IntoColor, Lab, Pixel as PalettePixel, Srgb},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::path::PathBuf,
@@ -12,7 +10,8 @@ type Lib = Vec<([f64; 3], Box<RgbImage>)>;
 
 pub struct AverageProcImpl {
     size: u32,
-    converter: Box<dyn Fn(&[u8; 3]) -> [f64; 3] + Sync + Send>,
+    converter: Converter,
+    distance: Distance,
 }
 
 impl Process for AverageProcImpl {
@@ -24,24 +23,12 @@ impl Process for AverageProcImpl {
 }
 
 impl AverageProcImpl {
-    pub fn new(config: ProcessConfig) -> Self {
-        let ProcessConfig {
-            size, color_space, ..
-        } = config;
-
-        let converter = Box::new(match color_space {
-            ColorSpace::RGB => |rgb: &[u8; 3]| Srgb::from_raw(rgb).into_format::<f64>().into_raw(),
-            ColorSpace::HSV => |rgb: &[u8; 3]| {
-                let hsv: Hsv<_, f64> = Srgb::from_raw(rgb).into_format::<f64>().into_color();
-                hsv.into_raw()
-            },
-            ColorSpace::CIEXYZ => |rgb: &[u8; 3]| {
-                let lab: Lab<_, f64> = Srgb::from_raw(rgb).into_format::<f64>().into_color();
-                lab.into_raw()
-            },
-        });
-
-        Self { size, converter }
+    pub fn new(size: u32, converter: Converter, distance: Distance) -> Self {
+        Self {
+            size,
+            converter,
+            distance,
+        }
     }
 
     fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Lib> {
@@ -81,8 +68,8 @@ impl AverageProcImpl {
                     let (_, replace) = lib
                         .par_iter()
                         .min_by(|(a, _), (b, _)| {
-                            square_distance(a, &raw)
-                                .partial_cmp(&square_distance(b, &raw))
+                            (self.distance)(a, &raw)
+                                .partial_cmp(&(self.distance)(b, &raw))
                                 .unwrap()
                         })
                         .unwrap();
@@ -123,9 +110,4 @@ impl AverageProcImpl {
         ans[2] /= count;
         ans
     }
-}
-
-#[inline(always)]
-fn square_distance(a: &[f64; 3], b: &[f64; 3]) -> f64 {
-    (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)
 }

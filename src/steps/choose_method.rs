@@ -42,7 +42,7 @@ impl<'a> Step<'a> for ChooseMethod {
             },
         );
 
-        let color_space = [ColorSpace::RGB, ColorSpace::HSV, ColorSpace::CIEXYZ]
+        let color_space = [ColorSpace::RGB, ColorSpace::HSV, ColorSpace::CIELAB]
             .iter()
             .fold(
                 Column::new()
@@ -99,7 +99,7 @@ fn color_space_label(item: &ColorSpace, state: &State) -> &'static str {
     match item {
         ColorSpace::RGB => state.i18n.color_space_rgb,
         ColorSpace::HSV => state.i18n.color_space_hsv,
-        ColorSpace::CIEXYZ => state.i18n.color_space_ciexyz,
+        ColorSpace::CIELAB => state.i18n.color_space_cielab,
     }
 }
 
