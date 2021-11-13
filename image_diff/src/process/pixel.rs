@@ -6,32 +6,41 @@ use {
     std::path::PathBuf,
 };
 
-pub struct AverageProcImpl {
+type ImgData = Vec<[f64; 3]>;
+
+pub struct PixelProcImpl {
     size: u32,
     converter: Converter,
     distance: Distance,
 }
 
-impl Process for AverageProcImpl {
+impl Process for PixelProcImpl {
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
         self.fill(target, self.index(library)?)
     }
 }
 
-impl ProcessStep for AverageProcImpl {
-    type Lib = Vec<([f64; 3], Box<RgbImage>)>;
+impl ProcessStep for PixelProcImpl {
+    type Lib = Vec<(ImgData, Box<RgbImage>)>;
 
     fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Self::Lib> {
+        let Self {
+            size, converter, ..
+        } = self;
+
         let vec = Mutex::new(Vec::with_capacity(libraries.len()));
         libraries.into_par_iter().for_each(|lib| {
             if let Ok(img) = image::open(lib) {
                 let img = img
-                    .resize_to_fill(self.size, self.size, FilterType::Nearest)
+                    .resize_to_fill(*size, *size, FilterType::Nearest)
                     .into_rgb8();
-                vec.lock().push((
-                    self.average(&img, 0, 0, self.size, self.size),
-                    Box::new(img),
-                ));
+                let mut buf: ImgData = Vec::with_capacity((size * size) as usize);
+                for j in 0..*size {
+                    for i in 0..*size {
+                        buf.push(converter(&img.get_pixel(i, j).0))
+                    }
+                }
+                vec.lock().push((buf, Box::new(img)));
             }
         });
         let vec = vec.into_inner();
@@ -53,13 +62,12 @@ impl ProcessStep for AverageProcImpl {
                 .for_each(|x| {
                     let w = self.size.min(width - x);
                     let h = self.size.min(height - y);
-                    let raw = self.average(&img, x, y, w, h);
 
                     let (_, replace) = lib
                         .par_iter()
                         .min_by(|(a, _), (b, _)| {
-                            (self.distance)(a, &raw)
-                                .partial_cmp(&(self.distance)(b, &raw))
+                            self.compare(&img, a, x, y, w, h)
+                                .partial_cmp(&self.compare(&img, b, x, y, w, h))
                                 .unwrap()
                         })
                         .unwrap();
@@ -80,7 +88,7 @@ impl ProcessStep for AverageProcImpl {
     }
 }
 
-impl AverageProcImpl {
+impl PixelProcImpl {
     pub fn new(size: u32, converter: Converter, distance: Distance) -> Self {
         Self {
             size,
@@ -89,21 +97,23 @@ impl AverageProcImpl {
         }
     }
 
-    fn average(&self, img: &RgbImage, x: u32, y: u32, w: u32, h: u32) -> [f64; 3] {
-        let Self { converter, .. } = self;
-        let mut ans = [0f64; 3];
-        for j in y..(y + h) {
-            for i in x..(x + w) {
-                let raw = converter(&img.get_pixel(i, j).0);
-                ans[0] += raw[0];
-                ans[1] += raw[1];
-                ans[2] += raw[2];
+    fn compare(&self, img: &RgbImage, other: &ImgData, x: u32, y: u32, w: u32, h: u32) -> f64 {
+        let Self {
+            size,
+            converter,
+            distance,
+            ..
+        } = self;
+
+        let mut ans = 0f64;
+        for j in 0..h {
+            for i in 0..w {
+                ans += distance(
+                    &converter(&img.get_pixel(i + x, j + y).0),
+                    &other[(j * size + i) as usize],
+                );
             }
         }
-        let count = (w * h) as f64;
-        ans[0] /= count;
-        ans[1] /= count;
-        ans[2] /= count;
         ans
     }
 }

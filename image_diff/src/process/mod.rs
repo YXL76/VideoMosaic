@@ -1,9 +1,12 @@
 mod average;
+mod pixel;
 
 use {
     crate::{CalculationUnit, ColorSpace, DistanceAlgorithm},
     average::AverageProcImpl,
+    image::RgbImage,
     palette::{encoding, white_point::D65, ColorDifference, Hsv, IntoColor, Lab, Pixel, Srgb},
+    pixel::PixelProcImpl,
     std::path::PathBuf,
 };
 
@@ -12,20 +15,26 @@ type Converter = Box<dyn Fn(&[u8; 3]) -> [f64; 3] + Sync + Send>;
 type Distance = Box<dyn Fn(&[f64; 3], &[f64; 3]) -> f64 + Sync + Send>;
 
 trait Process {
-    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<&str>;
+    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage>;
+}
+
+trait ProcessStep {
+    type Lib;
+
+    fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Self::Lib>;
+
+    fn fill(&self, target: &PathBuf, lib: Self::Lib) -> ProcessResult<RgbImage>;
 }
 
 pub struct ProcessWrapper(Box<dyn Process>);
 
 impl ProcessWrapper {
-    pub fn new(config: ProcessConfig) -> Self {
-        let ProcessConfig {
-            size,
-            color_space,
-            dist_algo,
-            ..
-        } = config;
-
+    pub fn new(
+        size: u32,
+        calc_unit: CalculationUnit,
+        color_space: ColorSpace,
+        dist_algo: DistanceAlgorithm,
+    ) -> Self {
         let converter = Box::new(match color_space {
             ColorSpace::RGB => |rgb: &[u8; 3]| Srgb::from_raw(rgb).into_format::<f64>().into_raw(),
             ColorSpace::HSV => |rgb: &[u8; 3]| {
@@ -61,33 +70,14 @@ impl ProcessWrapper {
             },
         });
 
-        Self(Box::new(AverageProcImpl::new(size, converter, distance)))
+        Self(match calc_unit {
+            CalculationUnit::Average => Box::new(AverageProcImpl::new(size, converter, distance)),
+            CalculationUnit::Pixel => Box::new(PixelProcImpl::new(size, converter, distance)),
+            _ => Box::new(AverageProcImpl::new(size, converter, distance)),
+        })
     }
 
-    pub fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<&str> {
+    pub fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
         self.0.run(target, library)
-    }
-}
-
-pub struct ProcessConfig {
-    size: u32,
-    calc_unit: CalculationUnit,
-    color_space: ColorSpace,
-    dist_algo: DistanceAlgorithm,
-}
-
-impl ProcessConfig {
-    pub fn new(
-        size: u32,
-        calc_unit: CalculationUnit,
-        color_space: ColorSpace,
-        dist_algo: DistanceAlgorithm,
-    ) -> Self {
-        Self {
-            size,
-            calc_unit,
-            color_space,
-            dist_algo,
-        }
     }
 }
