@@ -1,12 +1,14 @@
 use {
     super::{Step, StepMessage},
     crate::{states::State, styles::spacings},
-    iced::{Column, Element, Length, Radio, Row, Text},
+    iced::{scrollable, Column, Element, Length, Radio, Row, Scrollable, Text},
     image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
 };
 
 #[derive(Default)]
-pub struct ChooseMethod {}
+pub struct ChooseMethod {
+    scroll: scrollable::State,
+}
 
 impl<'a> Step<'a> for ChooseMethod {
     fn title(&self, state: &State) -> &str {
@@ -18,16 +20,7 @@ impl<'a> Step<'a> for ChooseMethod {
     }
 
     fn view(&mut self, state: &State) -> Element<StepMessage> {
-        for i in state.libraries.values() {
-            image_diff::ProcessFactory::new(image_diff::ProcessConfig::new(
-                50,
-                CalculationUnit::Average,
-                ColorSpace::HSV,
-                DistanceAlgorithm::Euclidean,
-            ))
-            .run(&state.target_path, i);
-            break;
-        }
+        let Self { scroll } = self;
 
         let calc_unit = [
             CalculationUnit::Average,
@@ -81,10 +74,15 @@ impl<'a> Step<'a> for ChooseMethod {
                 },
             );
 
-        Row::new()
-            .push(calc_unit.width(Length::FillPortion(1)))
-            .push(color_space.width(Length::FillPortion(1)))
-            .push(dist_algo.width(Length::FillPortion(1)))
+        Scrollable::new(scroll)
+            .push(
+                Row::new()
+                    .height(Length::Fill)
+                    .push(calc_unit.width(Length::FillPortion(1)))
+                    .push(color_space.width(Length::FillPortion(1)))
+                    .push(dist_algo.width(Length::FillPortion(1))),
+            )
+            .height(Length::Fill)
             .into()
     }
 }

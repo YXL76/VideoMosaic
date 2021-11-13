@@ -1320,6 +1320,8 @@ dependencies = [
  "image",
  "kmeans_colors",
  "palette",
+ "parking_lot",
+ "rayon",
 ]
 
 [[package]]

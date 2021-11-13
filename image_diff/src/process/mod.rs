@@ -12,9 +12,9 @@ trait Process {
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<&str>;
 }
 
-pub struct ProcessFactory(Box<dyn Process>);
+pub struct ProcessWrapper(Box<dyn Process>);
 
-impl ProcessFactory {
+impl ProcessWrapper {
     pub fn new(config: ProcessConfig) -> Self {
         Self(Box::new(AverageProcImpl::new(config)))
     }
