@@ -3,10 +3,9 @@ mod steps;
 mod styles;
 mod widgets;
 
+use std::path::PathBuf;
 use {
-    iced::{
-        button, window, Column, Container, Element, Length, Row, Sandbox, Settings, Space, Text,
-    },
+    iced::{button, Column, Container, Element, Length, Row, Sandbox, Space, Text},
     rfd::{FileDialog, MessageButtons, MessageDialog},
     states::{State, EN, LIBRARY_BTN_CNT, ZH_CN},
     std::fs::read_dir,
@@ -15,7 +14,39 @@ use {
     widgets::{btn_icon, btn_text, pri_btn, rou_btn, sec_btn},
 };
 
-pub fn main() -> iced::Result {
+pub fn main() {
+    image_diff::ProcessWrapper::new(
+        50,
+        image_diff::CalculationUnit::KMeans,
+        image_diff::ColorSpace::CIELAB,
+        image_diff::DistanceAlgorithm::Euclidean,
+    )
+    .run(
+        &PathBuf::from("/home/yxl/gosaic/examples/obi-aspect-macro.jpg"),
+        &read_dir("/home/yxl/Pictures/pixiv")
+            .unwrap()
+            .filter_map(|res| {
+                if let Ok(entry) = res.as_ref() {
+                    let path = entry.path();
+                    let ext = path
+                        .extension()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or_default();
+                    if path.is_file() && ["png", "jpg", "jpeg"].contains(&ext) {
+                        return Some(path);
+                    }
+                };
+                None
+            })
+            .collect::<Vec<_>>(),
+    )
+    .unwrap()
+    .save("/home/yxl/MosaicVideo/tmp.png")
+    .unwrap();
+}
+
+/* pub fn main() -> iced::Result {
     image_diff::init().unwrap();
     MosaicVideo::run(Settings {
         window: window::Settings {
@@ -26,7 +57,7 @@ pub fn main() -> iced::Result {
         antialiasing: false,
         ..Settings::default()
     })
-}
+} */
 
 #[derive(Default)]
 struct MosaicVideo<'a> {
@@ -46,7 +77,7 @@ enum Message {
     ThemePressed,
     BackPressed,
     NextPressed,
-    StepMessage(StepMessage),
+    Step(StepMessage),
 }
 
 impl<'a> Sandbox for MosaicVideo<'a> {
@@ -81,7 +112,7 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             Message::BackPressed => steps.back(),
             Message::NextPressed => steps.next(state),
 
-            Message::StepMessage(step_message) => match step_message {
+            Message::Step(step_message) => match step_message {
                 StepMessage::TargetType(target_type) => {
                     let pick_res = match target_type {
                         TargetType::Image => FileDialog::new()
@@ -122,7 +153,7 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                                     None
                                 })
                                 .collect::<Vec<_>>();
-                            if entries.len() > 0 {
+                            if !entries.is_empty() {
                                 state.libraries.insert(dir, entries);
                             }
                         }
@@ -223,7 +254,7 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             .padding(spacings::_10)
             .spacing(spacings::_6)
             .push(header)
-            .push(steps.view(state).map(Message::StepMessage))
+            .push(steps.view(state).map(Message::Step))
             .push(Container::new(controls).width(Length::Fill).center_x());
 
         Container::new(content)

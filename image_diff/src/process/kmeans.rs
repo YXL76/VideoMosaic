@@ -17,6 +17,7 @@ pub struct KMeansProcImpl {
 }
 
 impl Process for KMeansProcImpl {
+    #[inline(always)]
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
         self.fill(target, self.index(library)?)
     }
@@ -94,10 +95,10 @@ impl KMeansProcImpl {
             _ => Self::MAX_ITER_RGB,
         };
 
-        let k_means: KMeansResult = match color_space {
-            ColorSpace::CIELAB => Box::new(Self::k_means::<Lab>),
-            _ => Box::new(Self::k_means::<Srgb>),
-        };
+        let k_means: KMeansResult = Box::new(match color_space {
+            ColorSpace::CIELAB => Self::k_means::<Lab>,
+            _ => Self::k_means::<Srgb>,
+        });
 
         Self {
             size,

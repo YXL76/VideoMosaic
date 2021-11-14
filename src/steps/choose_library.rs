@@ -23,7 +23,7 @@ impl<'a> Step<'a> for ChooseLibrary {
     }
 
     fn can_next(&self, state: &State) -> bool {
-        state.libraries.len() > 0
+        !state.libraries.is_empty()
     }
 
     fn view(&mut self, state: &State) -> Element<StepMessage> {
