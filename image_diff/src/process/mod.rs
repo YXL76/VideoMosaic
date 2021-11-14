@@ -110,8 +110,17 @@ impl ProcessWrapper {
         });
 
         let distance = Box::new(match dist_algo {
-            DistanceAlgorithm::Euclidean => |a: &RawColor, b: &RawColor| {
-                (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)
+            DistanceAlgorithm::Euclidean => match color_space {
+                ColorSpace::HSV => |a: &RawColor, b: &RawColor| {
+                    let a = Hsv::<encoding::Srgb, f32>::from_raw(a);
+                    let b = Hsv::<encoding::Srgb, f32>::from_raw(b);
+                    (a.hue.to_positive_degrees() - b.hue.to_positive_degrees()).powi(2)
+                        + ((a.saturation - b.saturation) * 360.).powi(2)
+                        + ((a.value - b.value) * 360.).powi(2)
+                },
+                _ => |a: &RawColor, b: &RawColor| {
+                    (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)
+                },
             },
             DistanceAlgorithm::CIEDE2000 => match color_space {
                 ColorSpace::RGB => |a: &RawColor, b: &RawColor| {

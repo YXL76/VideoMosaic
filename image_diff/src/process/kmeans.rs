@@ -78,7 +78,7 @@ impl ProcessStep for KMeansProcImpl {
 }
 
 impl KMeansProcImpl {
-    const RUNS: u64 = 2;
+    const RUNS: u64 = 3;
     const FACTOR_RGB: f32 = 0.0025;
     const FACTOR_LAB: f32 = 10.;
     const MAX_ITER_RGB: usize = 10;
