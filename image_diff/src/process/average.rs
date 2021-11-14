@@ -1,5 +1,5 @@
 use {
-    super::{Converter, Distance, Process, ProcessResult, ProcessStep},
+    super::{Converter, Distance, Process, ProcessResult, ProcessStep, RawColor},
     image::{self, imageops::FilterType, ImageBuffer, RgbImage},
     parking_lot::Mutex,
     rayon::prelude::*,
@@ -19,7 +19,7 @@ impl Process for AverageProcImpl {
 }
 
 impl ProcessStep for AverageProcImpl {
-    type Lib = Vec<([f64; 3], Box<RgbImage>)>;
+    type Lib = Vec<(RawColor, Box<RgbImage>)>;
 
     fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Self::Lib> {
         let vec = Mutex::new(Vec::with_capacity(libraries.len()));
@@ -89,9 +89,9 @@ impl AverageProcImpl {
         }
     }
 
-    fn average(&self, img: &RgbImage, x: u32, y: u32, w: u32, h: u32) -> [f64; 3] {
+    fn average(&self, img: &RgbImage, x: u32, y: u32, w: u32, h: u32) -> RawColor {
         let Self { converter, .. } = self;
-        let mut ans = [0f64; 3];
+        let mut ans = [0f32; 3];
         for j in y..(y + h) {
             for i in x..(x + w) {
                 let raw = converter(&img.get_pixel(i, j).0);
@@ -100,7 +100,7 @@ impl AverageProcImpl {
                 ans[2] += raw[2];
             }
         }
-        let count = (w * h) as f64;
+        let count = (w * h) as f32;
         ans[0] /= count;
         ans[1] /= count;
         ans[2] /= count;

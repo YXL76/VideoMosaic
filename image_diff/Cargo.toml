@@ -18,6 +18,7 @@ version = "4.4"
 [dependencies.kmeans_colors]
 version = "0.4"
 default-features = false
+features = ["palette_color"]
 
 [dependencies.palette]
 version = "0.6"

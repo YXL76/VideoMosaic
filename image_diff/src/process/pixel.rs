@@ -1,12 +1,12 @@
 use {
-    super::{Converter, Distance, Process, ProcessResult, ProcessStep},
+    super::{Converter, Distance, Process, ProcessResult, ProcessStep, RawColor},
     image::{self, imageops::FilterType, ImageBuffer, RgbImage},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::path::PathBuf,
 };
 
-type ImgData = Vec<[f64; 3]>;
+type ImgData = Vec<RawColor>;
 
 pub struct PixelProcImpl {
     size: u32,
@@ -97,7 +97,7 @@ impl PixelProcImpl {
         }
     }
 
-    fn compare(&self, img: &RgbImage, other: &ImgData, x: u32, y: u32, w: u32, h: u32) -> f64 {
+    fn compare(&self, img: &RgbImage, other: &ImgData, x: u32, y: u32, w: u32, h: u32) -> f32 {
         let Self {
             size,
             converter,
@@ -105,7 +105,7 @@ impl PixelProcImpl {
             ..
         } = self;
 
-        let mut ans = 0f64;
+        let mut ans = 0f32;
         for j in 0..h {
             for i in 0..w {
                 ans += distance(
