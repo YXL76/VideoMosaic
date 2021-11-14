@@ -1,14 +1,16 @@
 mod average;
-mod kmeans;
+// mod kmeans;
 mod pixel;
 
 use {
     crate::{CalculationUnit, ColorSpace, DistanceAlgorithm},
     average::AverageProcImpl,
-    image::RgbImage,
-    kmeans::KMeansProcImpl,
+    image::{imageops::FilterType, ImageBuffer, RgbImage},
+    // kmeans::KMeansProcImpl,
     palette::{encoding, white_point::D65, ColorDifference, Hsv, IntoColor, Lab, Pixel, Srgb},
+    parking_lot::Mutex,
     pixel::PixelProcImpl,
+    rayon::prelude::*,
     std::path::PathBuf,
 };
 
@@ -22,11 +24,66 @@ trait Process {
 }
 
 trait ProcessStep {
-    type Lib;
+    type Item: Sync + Send;
 
-    fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Self::Lib>;
+    fn size(&self) -> u32;
 
-    fn fill(&self, target: &PathBuf, lib: Self::Lib) -> ProcessResult<RgbImage>;
+    #[inline(always)]
+    fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Vec<Self::Item>>
+    where
+        Self: Sync + Send,
+    {
+        let vec = Mutex::new(Vec::with_capacity(libraries.len()));
+        libraries.into_par_iter().for_each(|lib| {
+            if let Ok(img) = image::open(lib) {
+                let img = img
+                    .resize_to_fill(self.size(), self.size(), FilterType::Nearest)
+                    .into_rgb8();
+                vec.lock().push(self.index_step(img));
+            }
+        });
+        let vec = vec.into_inner();
+        if vec.len() == 0 {
+            return Err("");
+        }
+        Ok(vec)
+    }
+
+    #[inline(always)]
+    fn fill(&self, target: &PathBuf, lib: Vec<Self::Item>) -> ProcessResult<RgbImage>
+    where
+        Self: Sync + Send,
+    {
+        let img = image::open(target).unwrap().into_rgb8();
+        let (width, height) = img.dimensions();
+        let imgbuf: Mutex<RgbImage> = Mutex::new(ImageBuffer::new(width, height));
+
+        for y in (0..height).step_by(self.size() as usize) {
+            (0..width)
+                .into_par_iter()
+                .step_by(self.size() as usize)
+                .for_each(|x| {
+                    let w = self.size().min(width - x);
+                    let h = self.size().min(height - y);
+                    self.fill_step(&img, x, y, w, h, &lib, &imgbuf);
+                })
+        }
+
+        Ok(imgbuf.into_inner())
+    }
+
+    fn index_step(&self, img: RgbImage) -> Self::Item;
+
+    fn fill_step(
+        &self,
+        img: &RgbImage,
+        x: u32,
+        y: u32,
+        w: u32,
+        h: u32,
+        lib: &Vec<Self::Item>,
+        buf: &Mutex<RgbImage>,
+    );
 }
 
 pub struct ProcessWrapper(Box<dyn Process>);
@@ -75,8 +132,8 @@ impl ProcessWrapper {
 
         Self(match calc_unit {
             CalculationUnit::Average => Box::new(AverageProcImpl::new(size, converter, distance)),
-            CalculationUnit::Pixel => Box::new(PixelProcImpl::new(size, converter, distance)),
-            CalculationUnit::KMeans => {
+            CalculationUnit::Pixel | _ => Box::new(PixelProcImpl::new(size, converter, distance)),
+            /* CalculationUnit::KMeans => {
                 const RUNS: u64 = 2;
                 const FACTOR_RGB: f32 = 0.0025;
                 const FACTOR_LAB: f32 = 10.;
@@ -95,7 +152,7 @@ impl ProcessWrapper {
                 Box::new(KMeansProcImpl::new(
                     size, RUNS, factor, max_iter, converter, distance,
                 ))
-            }
+            } */
         })
     }
 

@@ -1,6 +1,6 @@
 use {
     super::{Converter, Distance, Process, ProcessResult, ProcessStep, RawColor},
-    image::{self, imageops::FilterType, ImageBuffer, RgbImage},
+    image::{self, RgbImage},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::path::PathBuf,
@@ -13,70 +13,59 @@ pub struct AverageProcImpl {
 }
 
 impl Process for AverageProcImpl {
+    #[inline(always)]
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
         self.fill(target, self.index(library)?)
     }
 }
 
 impl ProcessStep for AverageProcImpl {
-    type Lib = Vec<(RawColor, Box<RgbImage>)>;
+    type Item = (RawColor, Box<RgbImage>);
 
-    fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Self::Lib> {
-        let vec = Mutex::new(Vec::with_capacity(libraries.len()));
-        libraries.into_par_iter().for_each(|lib| {
-            if let Ok(img) = image::open(lib) {
-                let img = img
-                    .resize_to_fill(self.size, self.size, FilterType::Nearest)
-                    .into_rgb8();
-                vec.lock().push((
-                    self.average(&img, 0, 0, self.size, self.size),
-                    Box::new(img),
-                ));
-            }
-        });
-        let vec = vec.into_inner();
-        if vec.len() == 0 {
-            return Err("");
-        }
-        Ok(vec)
+    #[inline(always)]
+    fn size(&self) -> u32 {
+        self.size
     }
 
-    fn fill(&self, target: &PathBuf, lib: Self::Lib) -> ProcessResult<RgbImage> {
-        let img = image::open(target).unwrap().into_rgb8();
-        let (width, height) = img.dimensions();
-        let imgbuf = Mutex::new(ImageBuffer::new(width, height));
+    #[inline(always)]
+    fn index_step(&self, img: RgbImage) -> Self::Item {
+        (
+            self.average(&img, 0, 0, self.size, self.size),
+            Box::new(img),
+        )
+    }
 
-        for y in (0..height).step_by(self.size as usize) {
-            (0..width)
-                .into_par_iter()
-                .step_by(self.size as usize)
-                .for_each(|x| {
-                    let w = self.size.min(width - x);
-                    let h = self.size.min(height - y);
-                    let raw = self.average(&img, x, y, w, h);
+    #[inline(always)]
+    fn fill_step(
+        &self,
+        img: &RgbImage,
+        x: u32,
+        y: u32,
+        w: u32,
+        h: u32,
+        lib: &Vec<Self::Item>,
+        buf: &Mutex<RgbImage>,
+    ) {
+        let raw = self.average(img, x, y, w, h);
 
-                    let (_, replace) = lib
-                        .par_iter()
-                        .min_by(|(a, _), (b, _)| {
-                            (self.distance)(a, &raw)
-                                .partial_cmp(&(self.distance)(b, &raw))
-                                .unwrap()
-                        })
-                        .unwrap();
+        let (_, replace) = lib
+            .par_iter()
+            .min_by(|(a, _), (b, _)| {
+                (self.distance)(a, &raw)
+                    .partial_cmp(&(self.distance)(b, &raw))
+                    .unwrap()
+            })
+            .unwrap();
 
-                    {
-                        let mut guard = imgbuf.lock();
-                        for j in 0..h {
-                            for i in 0..w {
-                                let p = replace.get_pixel(i, j);
-                                guard.put_pixel(i + x, j + y, *p);
-                            }
-                        }
-                    }
-                })
+        {
+            let mut guard = buf.lock();
+            for j in 0..h {
+                for i in 0..w {
+                    let p = replace.get_pixel(i, j);
+                    guard.put_pixel(i + x, j + y, *p);
+                }
+            }
         }
-
-        Ok(imgbuf.into_inner())
     }
 }
 
@@ -89,6 +78,7 @@ impl AverageProcImpl {
         }
     }
 
+    #[inline(always)]
     fn average(&self, img: &RgbImage, x: u32, y: u32, w: u32, h: u32) -> RawColor {
         let Self { converter, .. } = self;
         let mut ans = [0f32; 3];

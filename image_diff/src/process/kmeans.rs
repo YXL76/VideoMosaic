@@ -23,9 +23,9 @@ impl Process for KMeansProcImpl {
 }
 
 impl ProcessStep for KMeansProcImpl {
-    type Lib = Vec<(ImgData, Box<RgbImage>)>;
+    type Item = (u32, Box<RgbImage>);
 
-    fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Self::Lib> {
+    fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Vec<Self::Item>> {
         let Self {
             size, converter, ..
         } = self;
@@ -41,7 +41,7 @@ impl ProcessStep for KMeansProcImpl {
         Ok(vec)
     }
 
-    fn fill(&self, target: &PathBuf, lib: Self::Lib) -> ProcessResult<RgbImage> {
+    fn fill(&self, target: &PathBuf, lib: Vec<Self::Item>) -> ProcessResult<RgbImage> {
         let img = image::open(target).unwrap().into_rgb8();
         let (width, height) = img.dimensions();
         let imgbuf = Mutex::new(ImageBuffer::new(width, height));
