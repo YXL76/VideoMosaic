@@ -1,7 +1,8 @@
 use {
-    super::{Converter, Distance, Process, ProcessResult, ProcessStep, RawColor},
-    image::{self, imageops::FilterType, ImageBuffer, RgbImage},
-    kmeans_colors::{get_kmeans, Calculate, Kmeans, MapColor, Sort},
+    super::{ColorSpace, Distance, KMeansResult, Process, ProcessResult, ProcessStep, RawColor},
+    image::{self, RgbImage},
+    kmeans_colors::{get_kmeans, Calculate, Kmeans, Sort},
+    palette::{convert::FromColorUnclamped, Clamp, IntoColor, Lab, Pixel, Srgb},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::path::PathBuf,
@@ -9,11 +10,10 @@ use {
 
 pub struct KMeansProcImpl {
     size: u32,
-    runs: u64,
-    factor: f32,
+    converge: f32,
     max_iter: usize,
-    converter: Converter,
     distance: Distance,
+    k_means: KMeansResult,
 }
 
 impl Process for KMeansProcImpl {
@@ -23,59 +23,124 @@ impl Process for KMeansProcImpl {
 }
 
 impl ProcessStep for KMeansProcImpl {
-    type Item = (u32, Box<RgbImage>);
+    type Item = (Vec<RawColor>, Box<RgbImage>);
 
-    fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Vec<Self::Item>> {
-        let Self {
-            size, converter, ..
-        } = self;
-
-        let vec = Mutex::new(Vec::with_capacity(libraries.len()));
-        libraries
-            .into_par_iter()
-            .for_each(|lib| if let Ok(img) = image::open(lib) {});
-        let vec = vec.into_inner();
-        if vec.len() == 0 {
-            return Err("");
-        }
-        Ok(vec)
+    #[inline(always)]
+    fn size(&self) -> u32 {
+        self.size
     }
 
-    fn fill(&self, target: &PathBuf, lib: Vec<Self::Item>) -> ProcessResult<RgbImage> {
-        let img = image::open(target).unwrap().into_rgb8();
-        let (width, height) = img.dimensions();
-        let imgbuf = Mutex::new(ImageBuffer::new(width, height));
+    #[inline(always)]
+    fn index_step(&self, img: RgbImage) -> Self::Item {
+        let Self { k_means, .. } = self;
+        (
+            k_means(&self, &img, 0, 0, self.size, self.size),
+            Box::new(img),
+        )
+    }
 
-        for y in (0..height).step_by(self.size as usize) {
-            (0..width)
-                .into_par_iter()
-                .step_by(self.size as usize)
-                .for_each(|x| {
-                    let w = self.size.min(width - x);
-                    let h = self.size.min(height - y);
-                })
+    #[inline(always)]
+    fn fill_step(
+        &self,
+        img: &RgbImage,
+        x: u32,
+        y: u32,
+        w: u32,
+        h: u32,
+        lib: &Vec<Self::Item>,
+        buf: &Mutex<RgbImage>,
+    ) {
+        let Self {
+            distance, k_means, ..
+        } = self;
+        let raw = k_means(&self, img, x, y, w, h);
+
+        let (_, replace) = lib
+            .par_iter()
+            .min_by(|(a, _), (b, _)| {
+                distance(&a[0], &raw[0])
+                    .partial_cmp(&distance(&b[0], &raw[0]))
+                    .unwrap()
+            })
+            .unwrap();
+
+        {
+            let mut guard = buf.lock();
+            for j in 0..h {
+                for i in 0..w {
+                    let p = replace.get_pixel(i, j);
+                    guard.put_pixel(i + x, j + y, *p);
+                }
+            }
         }
-
-        Ok(imgbuf.into_inner())
     }
 }
 
 impl KMeansProcImpl {
-    pub fn new(
-        size: u32,
-        runs: u64,
-        factor: f32,
-        max_iter: usize,
-        converter: Converter,
-        distance: Distance,
-    ) -> Self {
+    const RUNS: u64 = 2;
+    const FACTOR_RGB: f32 = 0.0025;
+    const FACTOR_LAB: f32 = 10.;
+    const MAX_ITER_RGB: usize = 10;
+    const MAX_ITER_LAB: usize = 20;
+
+    pub fn new(size: u32, distance: Distance, color_space: ColorSpace) -> Self {
+        let converge = match color_space {
+            ColorSpace::CIELAB => Self::FACTOR_LAB,
+            _ => Self::FACTOR_RGB,
+        };
+
+        let max_iter = match color_space {
+            ColorSpace::CIELAB => Self::MAX_ITER_LAB,
+            _ => Self::MAX_ITER_RGB,
+        };
+
+        let k_means: KMeansResult = match color_space {
+            ColorSpace::CIELAB => Box::new(Self::k_means::<Lab>),
+            _ => Box::new(Self::k_means::<Srgb>),
+        };
+
         Self {
             size,
-            runs,
-            factor,
+            converge,
             max_iter,
-            converter,
             distance,
+            k_means,
         }
+    }
+
+    // #[inline(always)]
+    fn k_means<
+        T: Calculate + Sort + Copy + Clone + Clamp + Pixel<f32> + FromColorUnclamped<Srgb>,
+    >(
+        &self,
+        img: &RgbImage,
+        x: u32,
+        y: u32,
+        w: u32,
+        h: u32,
+    ) -> Vec<RawColor> {
+        let Self {
+            max_iter, converge, ..
+        } = self;
+        let mut buf: Vec<T> = Vec::with_capacity((w * h) as usize);
+        for j in y..(y + h) {
+            for i in x..(x + w) {
+                let color = Srgb::from_raw(&img.get_pixel(i, j).0)
+                    .into_format::<f32>()
+                    .into_color();
+                buf.push(color)
+            }
+        }
+        let res = (0..Self::RUNS).fold(Kmeans::new(), |res, i| {
+            let run_res = get_kmeans(1, *max_iter, *converge, false, &buf, i);
+            if run_res.score < res.score {
+                run_res
+            } else {
+                res
+            }
+        });
+        let mut res = T::sort_indexed_colors(&res.centroids, &res.indices);
+        res.sort_unstable_by(|a, b| (b.percentage).partial_cmp(&a.percentage).unwrap());
+        res.iter().map(|i| i.centroid.into_raw()).collect()
     }
 }

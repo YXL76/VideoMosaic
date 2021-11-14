@@ -1,12 +1,12 @@
 mod average;
-// mod kmeans;
+mod kmeans;
 mod pixel;
 
 use {
     crate::{CalculationUnit, ColorSpace, DistanceAlgorithm},
     average::AverageProcImpl,
     image::{imageops::FilterType, ImageBuffer, RgbImage},
-    // kmeans::KMeansProcImpl,
+    kmeans::KMeansProcImpl,
     palette::{encoding, white_point::D65, ColorDifference, Hsv, IntoColor, Lab, Pixel, Srgb},
     parking_lot::Mutex,
     pixel::PixelProcImpl,
@@ -18,6 +18,8 @@ type RawColor = [f32; 3];
 type ProcessResult<T> = Result<T, &'static str>;
 type Converter = Box<dyn Fn(&[u8; 3]) -> RawColor + Sync + Send>;
 type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
+type KMeansResult =
+    Box<dyn Fn(&KMeansProcImpl, &RgbImage, u32, u32, u32, u32) -> Vec<RawColor> + Sync + Send>;
 
 trait Process {
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage>;
@@ -132,27 +134,8 @@ impl ProcessWrapper {
 
         Self(match calc_unit {
             CalculationUnit::Average => Box::new(AverageProcImpl::new(size, converter, distance)),
-            CalculationUnit::Pixel | _ => Box::new(PixelProcImpl::new(size, converter, distance)),
-            /* CalculationUnit::KMeans => {
-                const RUNS: u64 = 2;
-                const FACTOR_RGB: f32 = 0.0025;
-                const FACTOR_LAB: f32 = 10.;
-                const MAX_ITER_RGB: usize = 10;
-                const MAX_ITER_LAB: usize = 20;
-
-                let factor = match color_space {
-                    ColorSpace::CIELAB => FACTOR_LAB,
-                    _ => FACTOR_RGB,
-                };
-                let max_iter = match color_space {
-                    ColorSpace::CIELAB => MAX_ITER_LAB,
-                    _ => MAX_ITER_RGB,
-                };
-
-                Box::new(KMeansProcImpl::new(
-                    size, RUNS, factor, max_iter, converter, distance,
-                ))
-            } */
+            CalculationUnit::Pixel => Box::new(PixelProcImpl::new(size, converter, distance)),
+            CalculationUnit::KMeans => Box::new(KMeansProcImpl::new(size, distance, color_space)),
         })
     }
 

@@ -46,15 +46,12 @@ impl ProcessStep for AverageProcImpl {
         lib: &Vec<Self::Item>,
         buf: &Mutex<RgbImage>,
     ) {
+        let Self { distance, .. } = self;
         let raw = self.average(img, x, y, w, h);
 
         let (_, replace) = lib
             .par_iter()
-            .min_by(|(a, _), (b, _)| {
-                (self.distance)(a, &raw)
-                    .partial_cmp(&(self.distance)(b, &raw))
-                    .unwrap()
-            })
+            .min_by(|(a, _), (b, _)| distance(a, &raw).partial_cmp(&distance(b, &raw)).unwrap())
             .unwrap();
 
         {
@@ -78,7 +75,7 @@ impl AverageProcImpl {
         }
     }
 
-    #[inline(always)]
+    // #[inline(always)]
     fn average(&self, img: &RgbImage, x: u32, y: u32, w: u32, h: u32) -> RawColor {
         let Self { converter, .. } = self;
         let mut ans = [0f32; 3];

@@ -84,7 +84,7 @@ impl PixelProcImpl {
         }
     }
 
-    #[inline(always)]
+    // #[inline(always)]
     fn compare(&self, img: &RgbImage, other: &ImgData, x: u32, y: u32, w: u32, h: u32) -> f32 {
         let Self {
             size,
