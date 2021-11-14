@@ -2,7 +2,7 @@ use {
     super::{ColorSpace, Distance, KMeansResult, Process, ProcessResult, ProcessStep, RawColor},
     image::{self, RgbImage},
     kmeans_colors::{get_kmeans, Calculate, Kmeans, Sort},
-    palette::{convert::FromColorUnclamped, Clamp, IntoColor, Lab, Pixel, Srgb},
+    palette::{convert::FromColorUnclamped, Clamp, Hsv, IntoColor, Lab, Pixel, Srgb},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::path::PathBuf,
@@ -86,18 +86,19 @@ impl KMeansProcImpl {
 
     pub fn new(size: u32, distance: Distance, color_space: ColorSpace) -> Self {
         let converge = match color_space {
+            ColorSpace::RGB | ColorSpace::HSV => Self::FACTOR_RGB,
             ColorSpace::CIELAB => Self::FACTOR_LAB,
-            _ => Self::FACTOR_RGB,
         };
 
         let max_iter = match color_space {
+            ColorSpace::RGB | ColorSpace::HSV => Self::MAX_ITER_RGB,
             ColorSpace::CIELAB => Self::MAX_ITER_LAB,
-            _ => Self::MAX_ITER_RGB,
         };
 
         let k_means: KMeansResult = Box::new(match color_space {
+            ColorSpace::RGB => Self::k_means::<Srgb>,
+            ColorSpace::HSV => Self::k_means::<Hsv>,
             ColorSpace::CIELAB => Self::k_means::<Lab>,
-            _ => Self::k_means::<Srgb>,
         });
 
         Self {

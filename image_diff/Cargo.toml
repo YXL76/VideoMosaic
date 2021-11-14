@@ -15,7 +15,8 @@ rayon = "1.5.1"
 version = "4.4"
 
 [dependencies.kmeans_colors]
-git = "https://github.com/okaneco/kmeans-colors"
+git = "https://github.com/YXL76/kmeans-colors"
+branch = "impl-traits-for-hsv"
 default-features = false
 features = ["palette_color"]
 

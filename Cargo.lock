@@ -1407,7 +1407,7 @@ dependencies = [
 [[package]]
 name = "kmeans_colors"
 version = "0.4.0"
-source = "git+https://github.com/okaneco/kmeans-colors#4b2240d147f463d3d3a50462cf98774dd56d3049"
+source = "git+https://github.com/YXL76/kmeans-colors?branch=impl-traits-for-hsv#db64f9363bd5186eb42a7fbefccadc94de3e22ba"
 dependencies = [
  "palette",
  "rand",
