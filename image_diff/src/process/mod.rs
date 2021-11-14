@@ -1,10 +1,12 @@
 mod average;
+mod kmeans;
 mod pixel;
 
 use {
     crate::{CalculationUnit, ColorSpace, DistanceAlgorithm},
     average::AverageProcImpl,
     image::RgbImage,
+    kmeans::KMeansProcImpl,
     palette::{encoding, white_point::D65, ColorDifference, Hsv, IntoColor, Lab, Pixel, Srgb},
     pixel::PixelProcImpl,
     std::path::PathBuf,
@@ -74,7 +76,26 @@ impl ProcessWrapper {
         Self(match calc_unit {
             CalculationUnit::Average => Box::new(AverageProcImpl::new(size, converter, distance)),
             CalculationUnit::Pixel => Box::new(PixelProcImpl::new(size, converter, distance)),
-            _ => Box::new(AverageProcImpl::new(size, converter, distance)),
+            CalculationUnit::KMeans => {
+                const RUNS: u64 = 2;
+                const FACTOR_RGB: f32 = 0.0025;
+                const FACTOR_LAB: f32 = 10.;
+                const MAX_ITER_RGB: usize = 10;
+                const MAX_ITER_LAB: usize = 20;
+
+                let factor = match color_space {
+                    ColorSpace::CIELAB => FACTOR_LAB,
+                    _ => FACTOR_RGB,
+                };
+                let max_iter = match color_space {
+                    ColorSpace::CIELAB => MAX_ITER_LAB,
+                    _ => MAX_ITER_RGB,
+                };
+
+                Box::new(KMeansProcImpl::new(
+                    size, RUNS, factor, max_iter, converter, distance,
+                ))
+            }
         })
     }
 
