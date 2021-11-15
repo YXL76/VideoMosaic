@@ -1,5 +1,6 @@
 use {
-    super::{Color, ColorSpace, Distance, Process, ProcessResult, ProcessStep, RawColor},
+    super::{ColorSpace, Distance, Process, ProcessResult, ProcessStep},
+    crate::utils::{Color, RawColor},
     image::{self, RgbImage},
     kmeans_colors::{get_kmeans, Kmeans},
     palette::{IntoColor, Srgb},

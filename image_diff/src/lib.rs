@@ -3,6 +3,7 @@
 extern crate ffmpeg_next as ffmpeg;
 
 mod process;
+mod utils;
 
 use {
     ffmpeg::{

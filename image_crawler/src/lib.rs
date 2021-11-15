@@ -133,8 +133,6 @@ async fn get_part_urls(
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     #[test]
     fn get_urls() {
         use {crate::PAGE_NUM, async_std::task::block_on};
@@ -143,13 +141,9 @@ mod tests {
 
     #[test]
     fn download_urls() {
-        use {crate::PAGE_NUM, async_std::task::block_on};
+        use {crate::PAGE_NUM, async_std::task::block_on, std::path::PathBuf};
         let urls = block_on(super::get_urls("风景", PAGE_NUM * 2)).unwrap();
-        block_on(super::download_urls(
-            urls,
-            &["png", "jpeg", "jpg"],
-            PathBuf::new(),
-        ))
-        .unwrap();
+        let filter = ["png", "jpeg", "jpg"];
+        block_on(super::download_urls(urls, &filter, PathBuf::new())).unwrap();
     }
 }

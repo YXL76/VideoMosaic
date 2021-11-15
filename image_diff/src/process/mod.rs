@@ -3,38 +3,22 @@ mod kmeans;
 mod pixel;
 
 use {
-    crate::{CalculationUnit, ColorSpace, DistanceAlgorithm},
+    crate::{
+        utils::{ciede2000, Color, RawColor, HSV, SRBG},
+        CalculationUnit, ColorSpace, DistanceAlgorithm,
+    },
     average::AverageProc,
     image::{imageops::FilterType, ImageBuffer, RgbImage},
     kmeans::KMeansProc,
-    kmeans_colors::{Calculate, Sort},
-    palette::{
-        convert::FromColorUnclamped, encoding, white_point::D65, Clamp, ColorDifference, Hsv,
-        IntoColor, Lab, Pixel, Srgb,
-    },
+    palette::{IntoColor, Lab, Srgb},
     parking_lot::Mutex,
     pixel::PixelProc,
     rayon::prelude::*,
     std::path::PathBuf,
 };
 
-type SRBG = Srgb<f32>;
-type HSV = Hsv<encoding::Srgb, f32>;
-type LAB = Lab<D65, f32>;
-
-type RawColor = [f32; 3];
 type ProcessResult<T> = Result<T, &'static str>;
 type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
-
-pub trait Color = Copy
-    + Clone
-    + Calculate
-    + Sort
-    + Clamp
-    + Pixel<f32>
-    + FromColorUnclamped<palette::rgb::Rgb>
-    + Sync
-    + Send;
 
 trait Process {
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage>;
@@ -162,8 +146,40 @@ impl ProcessWrapper {
     }
 }
 
-fn ciede2000<T: Copy + Pixel<f32> + IntoColor<LAB>>(a: &RawColor, b: &RawColor) -> f32 {
-    let a: LAB = (*T::from_raw(a)).into_color();
-    let b: LAB = (*T::from_raw(b)).into_color();
-    a.get_color_difference(&b)
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn process() {
+        use std::{fs::read_dir, path::PathBuf};
+
+        super::ProcessWrapper::new(
+            50,
+            crate::CalculationUnit::Average,
+            crate::ColorSpace::CIELAB,
+            crate::DistanceAlgorithm::CIEDE2000,
+        )
+        .run(
+            &PathBuf::from("../static/images/testdata.jpg"),
+            &read_dir("../image_crawler")
+                .unwrap()
+                .filter_map(|res| {
+                    if let Ok(entry) = res.as_ref() {
+                        let path = entry.path();
+                        let ext = path
+                            .extension()
+                            .unwrap_or_default()
+                            .to_str()
+                            .unwrap_or_default();
+                        if path.is_file() && ["png", "jpg", "jpeg"].contains(&ext) {
+                            return Some(path);
+                        }
+                    };
+                    None
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap()
+        .save("test.png")
+        .unwrap();
+    }
 }

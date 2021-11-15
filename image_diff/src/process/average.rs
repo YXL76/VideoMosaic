@@ -1,5 +1,6 @@
 use {
-    super::{Color, Distance, Process, ProcessResult, ProcessStep, RawColor},
+    super::{Distance, Process, ProcessResult, ProcessStep},
+    crate::utils::{Color, RawColor},
     image::{self, RgbImage},
     parking_lot::Mutex,
     rayon::prelude::*,
