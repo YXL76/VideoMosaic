@@ -3,9 +3,10 @@ mod steps;
 mod styles;
 mod widgets;
 
-use std::path::PathBuf;
 use {
-    iced::{button, Column, Container, Element, Length, Row, Sandbox, Space, Text},
+    iced::{
+        button, window, Column, Container, Element, Length, Row, Sandbox, Settings, Space, Text,
+    },
     rfd::{FileDialog, MessageButtons, MessageDialog},
     states::{State, EN, LIBRARY_BTN_CNT, ZH_CN},
     std::fs::read_dir,
@@ -14,39 +15,7 @@ use {
     widgets::{btn_icon, btn_text, pri_btn, rou_btn, sec_btn},
 };
 
-pub fn main() {
-    image_diff::ProcessWrapper::new(
-        50,
-        image_diff::CalculationUnit::KMeans,
-        image_diff::ColorSpace::CIELAB,
-        image_diff::DistanceAlgorithm::Euclidean,
-    )
-    .run(
-        &PathBuf::from("/home/yxl/gosaic/examples/obi-aspect-macro.jpg"),
-        &read_dir("/home/yxl/Pictures/pixiv")
-            .unwrap()
-            .filter_map(|res| {
-                if let Ok(entry) = res.as_ref() {
-                    let path = entry.path();
-                    let ext = path
-                        .extension()
-                        .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or_default();
-                    if path.is_file() && ["png", "jpg", "jpeg"].contains(&ext) {
-                        return Some(path);
-                    }
-                };
-                None
-            })
-            .collect::<Vec<_>>(),
-    )
-    .unwrap()
-    .save("/home/yxl/MosaicVideo/tmp.png")
-    .unwrap();
-}
-
-/* pub fn main() -> iced::Result {
+pub fn main() -> iced::Result {
     image_diff::init().unwrap();
     MosaicVideo::run(Settings {
         window: window::Settings {
@@ -57,7 +26,7 @@ pub fn main() {
         antialiasing: false,
         ..Settings::default()
     })
-} */
+}
 
 #[derive(Default)]
 struct MosaicVideo<'a> {

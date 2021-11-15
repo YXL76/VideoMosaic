@@ -1,3 +1,5 @@
+#![feature(trait_alias)]
+
 extern crate ffmpeg_next as ffmpeg;
 
 mod process;

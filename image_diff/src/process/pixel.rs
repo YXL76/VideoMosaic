@@ -1,27 +1,27 @@
 use {
-    super::{Converter, Distance, Process, ProcessResult, ProcessStep, RawColor},
+    super::{Color, Distance, Process, ProcessResult, ProcessStep, RawColor},
     image::{self, RgbImage},
     parking_lot::Mutex,
     rayon::prelude::*,
-    std::path::PathBuf,
+    std::{marker::PhantomData, path::PathBuf},
 };
 
 type ImgData = Vec<RawColor>;
 
-pub struct PixelProcImpl {
+pub struct PixelProc<T: Color> {
     size: u32,
-    converter: Converter,
     distance: Distance,
+    color: PhantomData<T>,
 }
 
-impl Process for PixelProcImpl {
+impl<T: Color> Process for PixelProc<T> {
     #[inline(always)]
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
         self.fill(target, self.index(library)?)
     }
 }
 
-impl ProcessStep for PixelProcImpl {
+impl<T: Color> ProcessStep<T> for PixelProc<T> {
     type Item = (ImgData, Box<RgbImage>);
 
     #[inline(always)]
@@ -31,13 +31,11 @@ impl ProcessStep for PixelProcImpl {
 
     #[inline(always)]
     fn index_step(&self, img: RgbImage) -> Self::Item {
-        let Self {
-            size, converter, ..
-        } = self;
+        let Self { size, .. } = self;
         let mut buf: ImgData = Vec::with_capacity((size * size) as usize);
         for j in 0..*size {
             for i in 0..*size {
-                buf.push(converter(&img.get_pixel(i, j).0))
+                buf.push(Self::converter(&img.get_pixel(i, j).0))
             }
         }
         (buf, Box::new(img))
@@ -75,29 +73,24 @@ impl ProcessStep for PixelProcImpl {
     }
 }
 
-impl PixelProcImpl {
-    pub fn new(size: u32, converter: Converter, distance: Distance) -> Self {
+impl<T: Color> PixelProc<T> {
+    pub fn new(size: u32, distance: Distance) -> Self {
         Self {
             size,
-            converter,
             distance,
+            color: PhantomData::default(),
         }
     }
 
     // #[inline(always)]
     fn compare(&self, img: &RgbImage, other: &ImgData, x: u32, y: u32, w: u32, h: u32) -> f32 {
-        let Self {
-            size,
-            converter,
-            distance,
-            ..
-        } = self;
+        let Self { size, distance, .. } = self;
 
         let mut ans = 0f32;
         for j in 0..h {
             for i in 0..w {
                 ans += distance(
-                    &converter(&img.get_pixel(i + x, j + y).0),
+                    &Self::converter(&img.get_pixel(i + x, j + y).0),
                     &other[(j * size + i) as usize],
                 );
             }

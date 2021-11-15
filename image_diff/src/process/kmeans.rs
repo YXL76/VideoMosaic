@@ -1,29 +1,29 @@
 use {
-    super::{ColorSpace, Distance, KMeansResult, Process, ProcessResult, ProcessStep, RawColor},
+    super::{Color, ColorSpace, Distance, Process, ProcessResult, ProcessStep, RawColor},
     image::{self, RgbImage},
-    kmeans_colors::{get_kmeans, Calculate, Kmeans, Sort},
-    palette::{convert::FromColorUnclamped, Clamp, Hsv, IntoColor, Lab, Pixel, Srgb},
+    kmeans_colors::{get_kmeans, Kmeans},
+    palette::{IntoColor, Srgb},
     parking_lot::Mutex,
     rayon::prelude::*,
-    std::path::PathBuf,
+    std::{marker::PhantomData, path::PathBuf},
 };
 
-pub struct KMeansProcImpl {
+pub struct KMeansProc<T: Color> {
     size: u32,
     converge: f32,
     max_iter: usize,
     distance: Distance,
-    k_means: KMeansResult,
+    color: PhantomData<T>,
 }
 
-impl Process for KMeansProcImpl {
+impl<T: Color> Process for KMeansProc<T> {
     #[inline(always)]
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
         self.fill(target, self.index(library)?)
     }
 }
 
-impl ProcessStep for KMeansProcImpl {
+impl<T: Color> ProcessStep<T> for KMeansProc<T> {
     type Item = (Vec<RawColor>, Box<RgbImage>);
 
     #[inline(always)]
@@ -33,9 +33,8 @@ impl ProcessStep for KMeansProcImpl {
 
     #[inline(always)]
     fn index_step(&self, img: RgbImage) -> Self::Item {
-        let Self { k_means, .. } = self;
         (
-            k_means(&self, &img, 0, 0, self.size, self.size),
+            self.k_means(&img, 0, 0, self.size, self.size),
             Box::new(img),
         )
     }
@@ -51,10 +50,8 @@ impl ProcessStep for KMeansProcImpl {
         lib: &Vec<Self::Item>,
         buf: &Mutex<RgbImage>,
     ) {
-        let Self {
-            distance, k_means, ..
-        } = self;
-        let raw = k_means(&self, img, x, y, w, h);
+        let Self { distance, .. } = self;
+        let raw = self.k_means(img, x, y, w, h);
 
         let (_, replace) = lib
             .par_iter()
@@ -77,7 +74,7 @@ impl ProcessStep for KMeansProcImpl {
     }
 }
 
-impl KMeansProcImpl {
+impl<T: Color> KMeansProc<T> {
     const RUNS: u64 = 3;
     const FACTOR_RGB: f32 = 0.0025;
     const FACTOR_LAB: f32 = 10.;
@@ -95,32 +92,17 @@ impl KMeansProcImpl {
             ColorSpace::CIELAB => Self::MAX_ITER_LAB,
         };
 
-        let k_means: KMeansResult = Box::new(match color_space {
-            ColorSpace::RGB => Self::k_means::<Srgb>,
-            ColorSpace::HSV => Self::k_means::<Hsv>,
-            ColorSpace::CIELAB => Self::k_means::<Lab>,
-        });
-
         Self {
             size,
             converge,
             max_iter,
             distance,
-            k_means,
+            color: PhantomData::default(),
         }
     }
 
     // #[inline(always)]
-    fn k_means<
-        T: Calculate + Sort + Copy + Clone + Clamp + Pixel<f32> + FromColorUnclamped<Srgb>,
-    >(
-        &self,
-        img: &RgbImage,
-        x: u32,
-        y: u32,
-        w: u32,
-        h: u32,
-    ) -> Vec<RawColor> {
+    fn k_means(&self, img: &RgbImage, x: u32, y: u32, w: u32, h: u32) -> Vec<RawColor> {
         let Self {
             max_iter, converge, ..
         } = self;

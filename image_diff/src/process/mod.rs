@@ -4,28 +4,43 @@ mod pixel;
 
 use {
     crate::{CalculationUnit, ColorSpace, DistanceAlgorithm},
-    average::AverageProcImpl,
+    average::AverageProc,
     image::{imageops::FilterType, ImageBuffer, RgbImage},
-    kmeans::KMeansProcImpl,
-    palette::{encoding, white_point::D65, ColorDifference, Hsv, IntoColor, Lab, Pixel, Srgb},
+    kmeans::KMeansProc,
+    kmeans_colors::{Calculate, Sort},
+    palette::{
+        convert::FromColorUnclamped, encoding, white_point::D65, Clamp, ColorDifference, Hsv,
+        IntoColor, Lab, Pixel, Srgb,
+    },
     parking_lot::Mutex,
-    pixel::PixelProcImpl,
+    pixel::PixelProc,
     rayon::prelude::*,
     std::path::PathBuf,
 };
 
+type SRBG = Srgb<f32>;
+type HSV = Hsv<encoding::Srgb, f32>;
+type LAB = Lab<D65, f32>;
+
 type RawColor = [f32; 3];
 type ProcessResult<T> = Result<T, &'static str>;
-type Converter = Box<dyn Fn(&[u8; 3]) -> RawColor + Sync + Send>;
 type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
-type KMeansResult =
-    Box<dyn Fn(&KMeansProcImpl, &RgbImage, u32, u32, u32, u32) -> Vec<RawColor> + Sync + Send>;
+
+pub trait Color = Copy
+    + Clone
+    + Calculate
+    + Sort
+    + Clamp
+    + Pixel<f32>
+    + FromColorUnclamped<palette::rgb::Rgb>
+    + Sync
+    + Send;
 
 trait Process {
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage>;
 }
 
-trait ProcessStep {
+trait ProcessStep<T: Color> {
     type Item: Sync + Send;
 
     fn size(&self) -> u32;
@@ -45,7 +60,7 @@ trait ProcessStep {
             }
         });
         let vec = vec.into_inner();
-        if vec.len() == 0 {
+        if vec.is_empty() {
             return Err("");
         }
         Ok(vec)
@@ -86,6 +101,12 @@ trait ProcessStep {
         lib: &Vec<Self::Item>,
         buf: &Mutex<RgbImage>,
     );
+
+    #[inline(always)]
+    fn converter(rgb: &[u8; 3]) -> RawColor {
+        let color: T = Srgb::from_raw(rgb).into_format::<f32>().into_color();
+        color.into_raw()
+    }
 }
 
 pub struct ProcessWrapper(Box<dyn Process>);
@@ -97,23 +118,11 @@ impl ProcessWrapper {
         color_space: ColorSpace,
         dist_algo: DistanceAlgorithm,
     ) -> Self {
-        let converter = Box::new(match color_space {
-            ColorSpace::RGB => |rgb: &[u8; 3]| Srgb::from_raw(rgb).into_format::<f32>().into_raw(),
-            ColorSpace::HSV => |rgb: &[u8; 3]| {
-                let hsv: Hsv<_, f32> = Srgb::from_raw(rgb).into_format::<f32>().into_color();
-                hsv.into_raw()
-            },
-            ColorSpace::CIELAB => |rgb: &[u8; 3]| {
-                let lab: Lab<_, f32> = Srgb::from_raw(rgb).into_format::<f32>().into_color();
-                lab.into_raw()
-            },
-        });
-
         let distance = Box::new(match dist_algo {
             DistanceAlgorithm::Euclidean => match color_space {
                 ColorSpace::HSV => |a: &RawColor, b: &RawColor| {
-                    let a = Hsv::<encoding::Srgb, f32>::from_raw(a);
-                    let b = Hsv::<encoding::Srgb, f32>::from_raw(b);
+                    let a = HSV::from_raw(a);
+                    let b = HSV::from_raw(b);
                     (a.hue.to_positive_degrees() - b.hue.to_positive_degrees()).powi(2)
                         + ((a.saturation - b.saturation) * 360.).powi(2)
                         + ((a.value - b.value) * 360.).powi(2)
@@ -123,32 +132,38 @@ impl ProcessWrapper {
                 },
             },
             DistanceAlgorithm::CIEDE2000 => match color_space {
-                ColorSpace::RGB => |a: &RawColor, b: &RawColor| {
-                    let a: Lab<D65, f32> = (*Srgb::from_raw(a)).into_color();
-                    let b: Lab<D65, f32> = (*Srgb::from_raw(b)).into_color();
-                    a.get_color_difference(&b)
-                },
-                ColorSpace::HSV => |a: &RawColor, b: &RawColor| {
-                    let a: Lab<D65, f32> = (*Hsv::<encoding::Srgb, f32>::from_raw(a)).into_color();
-                    let b: Lab<D65, f32> = (*Hsv::<encoding::Srgb, f32>::from_raw(b)).into_color();
-                    a.get_color_difference(&b)
-                },
-                ColorSpace::CIELAB => |a: &RawColor, b: &RawColor| {
-                    let a: &Lab<D65, f32> = Lab::from_raw(a);
-                    let b: &Lab<D65, f32> = Lab::from_raw(b);
-                    a.get_color_difference(b)
-                },
+                ColorSpace::RGB => ciede2000::<SRBG>,
+                ColorSpace::HSV => ciede2000::<HSV>,
+                ColorSpace::CIELAB => ciede2000::<Lab>,
             },
         });
 
         Self(match calc_unit {
-            CalculationUnit::Average => Box::new(AverageProcImpl::new(size, converter, distance)),
-            CalculationUnit::Pixel => Box::new(PixelProcImpl::new(size, converter, distance)),
-            CalculationUnit::KMeans => Box::new(KMeansProcImpl::new(size, distance, color_space)),
+            CalculationUnit::Average => match color_space {
+                ColorSpace::RGB => Box::new(AverageProc::<SRBG>::new(size, distance)),
+                ColorSpace::HSV => Box::new(AverageProc::<HSV>::new(size, distance)),
+                ColorSpace::CIELAB => Box::new(AverageProc::<Lab>::new(size, distance)),
+            },
+            CalculationUnit::Pixel => match color_space {
+                ColorSpace::RGB => Box::new(PixelProc::<SRBG>::new(size, distance)),
+                ColorSpace::HSV => Box::new(PixelProc::<HSV>::new(size, distance)),
+                ColorSpace::CIELAB => Box::new(PixelProc::<Lab>::new(size, distance)),
+            },
+            CalculationUnit::KMeans => match color_space {
+                ColorSpace::RGB => Box::new(KMeansProc::<SRBG>::new(size, distance, color_space)),
+                ColorSpace::HSV => Box::new(KMeansProc::<HSV>::new(size, distance, color_space)),
+                ColorSpace::CIELAB => Box::new(KMeansProc::<Lab>::new(size, distance, color_space)),
+            },
         })
     }
 
     pub fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
         self.0.run(target, library)
     }
+}
+
+fn ciede2000<T: Copy + Pixel<f32> + IntoColor<LAB>>(a: &RawColor, b: &RawColor) -> f32 {
+    let a: LAB = (*T::from_raw(a)).into_color();
+    let b: LAB = (*T::from_raw(b)).into_color();
+    a.get_color_difference(&b)
 }

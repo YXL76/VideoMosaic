@@ -1,25 +1,25 @@
 use {
-    super::{Converter, Distance, Process, ProcessResult, ProcessStep, RawColor},
+    super::{Color, Distance, Process, ProcessResult, ProcessStep, RawColor},
     image::{self, RgbImage},
     parking_lot::Mutex,
     rayon::prelude::*,
-    std::path::PathBuf,
+    std::{marker::PhantomData, path::PathBuf},
 };
 
-pub struct AverageProcImpl {
+pub struct AverageProc<T: Color> {
     size: u32,
-    converter: Converter,
     distance: Distance,
+    color: PhantomData<T>,
 }
 
-impl Process for AverageProcImpl {
+impl<T: Color> Process for AverageProc<T> {
     #[inline(always)]
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
         self.fill(target, self.index(library)?)
     }
 }
 
-impl ProcessStep for AverageProcImpl {
+impl<T: Color> ProcessStep<T> for AverageProc<T> {
     type Item = (RawColor, Box<RgbImage>);
 
     #[inline(always)]
@@ -66,22 +66,21 @@ impl ProcessStep for AverageProcImpl {
     }
 }
 
-impl AverageProcImpl {
-    pub fn new(size: u32, converter: Converter, distance: Distance) -> Self {
+impl<T: Color> AverageProc<T> {
+    pub fn new(size: u32, distance: Distance) -> Self {
         Self {
             size,
-            converter,
             distance,
+            color: PhantomData::default(),
         }
     }
 
     // #[inline(always)]
     fn average(&self, img: &RgbImage, x: u32, y: u32, w: u32, h: u32) -> RawColor {
-        let Self { converter, .. } = self;
         let mut ans = [0f32; 3];
         for j in y..(y + h) {
             for i in x..(x + w) {
-                let raw = converter(&img.get_pixel(i, j).0);
+                let raw = Self::converter(&img.get_pixel(i, j).0);
                 ans[0] += raw[0];
                 ans[1] += raw[1];
                 ans[2] += raw[2];
