@@ -146,6 +146,28 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                 StepMessage::ColorSpace(item) => state.color_space = item,
                 StepMessage::DistanceAlgorithm(item) => state.dist_algo = item,
 
+                StepMessage::Start => {
+                    let len = state.libraries.values().fold(0, |s, i| s + i.len());
+                    let library =
+                        state
+                            .libraries
+                            .values()
+                            .fold(Vec::with_capacity(len), |mut vec, i| {
+                                vec.extend_from_slice(i);
+                                vec
+                            });
+                    image_diff::ProcessWrapper::new(
+                        50,
+                        state.calc_unit,
+                        state.color_space,
+                        state.dist_algo,
+                    )
+                    .run(&state.target_path, &library)
+                    .unwrap()
+                    .save("tmp.png")
+                    .unwrap();
+                }
+
                 _ => (),
             },
         }

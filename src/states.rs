@@ -45,6 +45,9 @@ pub struct I18n {
     pub dist_algo: &'static str,
     pub dist_algo_euclidean: &'static str,
     pub dist_algo_ciede2000: &'static str,
+
+    pub process: &'static str,
+    pub start: &'static str,
 }
 
 impl Default for &I18n {
@@ -80,6 +83,9 @@ pub const EN: I18n = I18n {
     dist_algo: "Distance Algorithm",
     dist_algo_euclidean: "Euclidean",
     dist_algo_ciede2000: "CIEDE2000",
+
+    process: "Process",
+    start: "Start",
 };
 
 pub const ZH_CN: I18n = I18n {
@@ -109,4 +115,7 @@ pub const ZH_CN: I18n = I18n {
     dist_algo: "距离算法",
     dist_algo_euclidean: "欧几里德",
     dist_algo_ciede2000: "CIEDE2000",
+
+    process: "处理",
+    start: "开始",
 };

@@ -1,6 +1,7 @@
 mod choose_library;
 mod choose_method;
 mod choose_target;
+mod process;
 
 use {
     crate::states::State,
@@ -9,6 +10,7 @@ use {
     choose_target::ChooseTarget,
     iced::Element,
     image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
+    process::Process,
     std::path::PathBuf,
 };
 
@@ -23,6 +25,7 @@ pub enum StepMessage {
     CalculationUnit(CalculationUnit),
     ColorSpace(ColorSpace),
     DistanceAlgorithm(DistanceAlgorithm),
+    Start,
 }
 
 trait Step<'a> {
@@ -33,7 +36,7 @@ trait Step<'a> {
     fn view(&mut self, state: &State) -> Element<StepMessage>;
 }
 
-const STEPS_NUM: usize = 3;
+const STEPS_NUM: usize = 4;
 
 pub struct Steps<'a> {
     cur: usize,
@@ -48,6 +51,7 @@ impl Steps<'_> {
                 Box::new(ChooseTarget::default()),
                 Box::new(ChooseLibrary::default()),
                 Box::new(ChooseMethod::default()),
+                Box::new(Process::default()),
             ],
         }
     }
