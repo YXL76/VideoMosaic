@@ -1,7 +1,8 @@
 use {
+    async_std::{fs::File, io::WriteExt},
     futures::stream::{FuturesUnordered, StreamExt},
     serde::{Deserialize, Serialize},
-    std::{convert::TryInto, fs::File, io::Write, path::PathBuf, time::Duration},
+    std::{convert::TryInto, path::PathBuf, time::Duration},
     surf::{Client, Config, Result, Url},
 };
 
@@ -19,6 +20,8 @@ const BASE_PARAMS: [(&str, &str); 8] = [
     ("rn", "50"),
     ("tn", "resultjson_com"),
 ];
+const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
+Chrome/95.0.4638.69 Safari/537.36";
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize)]
@@ -35,11 +38,11 @@ struct Res {
 
 pub async fn download_urls(urls: Vec<String>, filter: &[&str], folder: PathBuf) -> Result<bool> {
     let client: Client = Config::new()
-    .set_http_keep_alive(true)
-    .set_max_connections_per_host(CONCURRENT)
-    .set_timeout(Some(Duration::from_secs(TIMEOUT)))
-    .add_header("user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36")?
-    .try_into()?;
+        .set_http_keep_alive(true)
+        .set_max_connections_per_host(CONCURRENT)
+        .set_timeout(Some(Duration::from_secs(TIMEOUT)))
+        .add_header("user-agent", USER_AGENT)?
+        .try_into()?;
 
     let mut reqs = urls
         .iter()
@@ -68,8 +71,10 @@ async fn download_url(
         let ext = t.subtype();
         if filter.contains(&ext) {
             let bytes = res.body_bytes().await?;
-            let mut file = File::create(folder.join(format!("{}.{}", idx, ext))).unwrap();
-            file.write(&bytes).unwrap();
+            let mut file = File::create(folder.join(format!("{}.{}", idx, ext)))
+                .await
+                .unwrap();
+            file.write(&bytes).await.unwrap();
             return Ok(true);
         }
     }
@@ -81,7 +86,7 @@ pub async fn get_urls(keyword: &str, num: usize) -> Result<Vec<String>> {
         .set_http_keep_alive(true)
         .set_max_connections_per_host(CONCURRENT)
         .set_timeout(Some(Duration::from_secs(TIMEOUT)))
-        .add_header("user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36")?
+        .add_header("user-agent", USER_AGENT)?
         .try_into()?;
 
     let mut params = BASE_PARAMS.to_vec();
