@@ -3,7 +3,7 @@ use {
     crate::utils::{Color, RawColor},
     image::{self, RgbImage},
     kmeans_colors::{get_kmeans, Kmeans},
-    palette::{IntoColor, Srgb},
+    palette::{IntoColor, Pixel, Srgb},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::{marker::PhantomData, path::PathBuf},
@@ -20,7 +20,7 @@ pub struct KMeansProc<T: Color> {
 impl<T: Color> Process for KMeansProc<T> {
     #[inline(always)]
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
-        self.fill(target, self.index(library)?)
+        self.do_run(target, library)
     }
 }
 

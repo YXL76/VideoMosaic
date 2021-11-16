@@ -10,7 +10,7 @@ use {
     average::AverageProc,
     image::{imageops::FilterType, ImageBuffer, RgbImage},
     kmeans::KMeansProc,
-    palette::{IntoColor, Lab, Srgb},
+    palette::{IntoColor, Lab, Pixel, Srgb},
     parking_lot::Mutex,
     pixel::PixelProc,
     rayon::prelude::*,
@@ -26,6 +26,14 @@ trait Process {
 
 trait ProcessStep<T: Color> {
     type Item: Sync + Send;
+
+    #[inline(always)]
+    fn do_run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage>
+    where
+        Self: Sync + Send,
+    {
+        self.fill(target, self.index(library)?)
+    }
 
     fn size(&self) -> u32;
 

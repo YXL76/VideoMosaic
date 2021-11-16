@@ -18,7 +18,7 @@ pub struct PixelProc<T: Color> {
 impl<T: Color> Process for PixelProc<T> {
     #[inline(always)]
     fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
-        self.fill(target, self.index(library)?)
+        self.do_run(target, library)
     }
 }
 
