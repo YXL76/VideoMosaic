@@ -6,12 +6,18 @@ mod widgets;
 
 use {
     iced::{
-        button, window, Column, Container, Element, Length, Row, Sandbox, Settings, Space, Text,
+        button, executor, window, Application, Column, Command, Container, Element, Length, Row,
+        Settings, Space, Subscription, Text,
     },
-    rfd::{FileDialog, MessageButtons, MessageDialog},
-    states::{State, EN, IMAGE_FILTER, LIBRARY_BTN_CNT, VIDEO_FILTER, ZH_CN},
-    std::fs::read_dir,
+    iced_native::subscription,
+    rfd::{AsyncMessageDialog, FileDialog, MessageButtons, MessageDialog, MessageLevel},
+    states::{State, EN, IMAGE_FILTER, VIDEO_FILTER, ZH_CN},
+    std::{
+        fs::{create_dir, read_dir, remove_dir},
+        path::PathBuf,
+    },
     steps::{StepMessage, Steps, TargetType},
+    streams::crawler,
     styles::{spacings, Theme},
     widgets::{btn_icon, btn_text, pri_btn, rou_btn, sec_btn},
 };
@@ -38,6 +44,8 @@ struct MosaicVideo<'a> {
     back_btn: button::State,
     next_btn: button::State,
 
+    should_exit: bool,
+
     steps: Steps<'a>,
 }
 
@@ -47,21 +55,24 @@ enum Message {
     ThemePressed,
     BackPressed,
     NextPressed,
+    NativeEvent(iced_native::Event),
     Step(StepMessage),
 }
 
-impl<'a> Sandbox for MosaicVideo<'a> {
+impl<'a> Application for MosaicVideo<'a> {
+    type Executor = executor::Default;
     type Message = Message;
+    type Flags = ();
 
-    fn new() -> Self {
-        Self::default()
+    fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
+        (Self::default(), Command::none())
     }
 
     fn title(&self) -> String {
         format!("{} - Mosaic Video", self.steps.title(&self.state))
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Command<Self::Message> {
         let Self { state, steps, .. } = self;
 
         match message {
@@ -76,8 +87,14 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                     Theme::Dark => Theme::Light,
                 }
             }
-            Message::BackPressed => steps.back(),
+            Message::BackPressed => steps.back(state),
             Message::NextPressed => steps.next(state),
+
+            Message::NativeEvent(ev) => {
+                if let iced_native::Event::Window(iced_native::window::Event::CloseRequested) = ev {
+                    self.should_exit = true;
+                }
+            }
 
             Message::Step(step_message) => match step_message {
                 StepMessage::TargetType(target_type) => {
@@ -100,33 +117,13 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                     }
                 }
 
-                StepMessage::AddLocalLibrary if state.libraries.len() < LIBRARY_BTN_CNT => {
-                    if let Some(folder) = FileDialog::new().pick_folder().as_ref() {
-                        let dir = folder.clone();
-                        if let Ok(entries) = read_dir(folder) {
-                            let entries = entries
-                                .filter_map(|res| {
-                                    if let Ok(entry) = res.as_ref() {
-                                        let path = entry.path();
-                                        let ext = path
-                                            .extension()
-                                            .unwrap_or_default()
-                                            .to_str()
-                                            .unwrap_or_default();
-                                        if path.is_file() && IMAGE_FILTER.contains(&ext) {
-                                            return Some(path);
-                                        }
-                                    };
-                                    None
-                                })
-                                .collect::<Vec<_>>();
-                            if !entries.is_empty() {
-                                state.libraries.insert(dir, entries);
-                            }
+                StepMessage::AddLocalLibrary => {
+                    if !state.is_full() {
+                        if let Some(path) = FileDialog::new().pick_folder().as_ref() {
+                            self.add_library(path);
                         }
                     }
                 }
-
                 StepMessage::DeleteLocalLibrary(folder) => {
                     if MessageDialog::new()
                         .set_title(state.i18n.delete)
@@ -138,7 +135,53 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                     }
                 }
 
-                StepMessage::Spider => (),
+                StepMessage::AddCrawler => {
+                    if !state.is_full() {
+                        state.pending.push(String::new())
+                    }
+                }
+                StepMessage::EditCrawler(idx, text) => state.pending[idx] = text,
+                StepMessage::StartCrawler(idx) => {
+                    if !state.pending[idx].is_empty() {
+                        let keyword = state.pending.remove(idx);
+                        let mut i = 0;
+                        let folder = loop {
+                            i += 1;
+                            let folder = PathBuf::from(format!("{}-{}", keyword, i));
+                            if !folder.exists() {
+                                break folder;
+                            }
+                        };
+                        create_dir(&folder).unwrap();
+                        state.crawler_id += 1;
+                        state.crawlers.insert(
+                            state.crawler_id,
+                            crawler::Crawler::new(state.crawler_id, keyword, 100, folder),
+                        );
+                    }
+                }
+                StepMessage::DeleteCrawler(idx) => {
+                    state.pending.remove(idx);
+                }
+                StepMessage::CrawlerMessage(ev) => match ev {
+                    crawler::Progress::Downloading(id) => {
+                        if let Some(v) = state.crawlers.get_mut(&id) {
+                            v.add();
+                        }
+                    }
+                    crawler::Progress::Finished(id) => {
+                        if let Some(v) = state.crawlers.remove(&id) {
+                            self.add_library(v.folder());
+                        }
+                    }
+                    crawler::Progress::Error(id, err) => {
+                        error_dialog(state, err);
+                        if let Some(v) = state.crawlers.remove(&id) {
+                            let _ = remove_dir(v.folder());
+                        }
+                    }
+                    crawler::Progress::None => (),
+                },
 
                 StepMessage::CalculationUnit(item) => state.calc_unit = item,
                 StepMessage::ColorSpace(item) => state.color_space = item,
@@ -165,10 +208,17 @@ impl<'a> Sandbox for MosaicVideo<'a> {
                     .save("tmp.png")
                     .unwrap();
                 }
-
-                _ => (),
             },
         }
+
+        Command::none()
+    }
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        Subscription::batch([
+            subscription::events().map(Message::NativeEvent),
+            self.steps.subscription(&self.state).map(Message::Step),
+        ])
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -180,6 +230,7 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             back_btn,
             next_btn,
             steps,
+            ..
         } = self;
 
         let i18n_l = btn_text(state.i18n.symbol);
@@ -201,36 +252,36 @@ impl<'a> Sandbox for MosaicVideo<'a> {
         let next_i = btn_icon(" \u{f142}");
         let next_l = btn_text(state.i18n.next);
         let btn_w = spacings::_24;
-        let control_items: Option<[Element<_>; 3]> = match (steps.can_back(), steps.can_next(state))
-        {
-            (true, true) => Some([
-                sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
-                    .on_press(Message::BackPressed)
-                    .into(),
-                Space::with_width(Length::Units(10)).into(),
-                pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
-                    .on_press(Message::NextPressed)
-                    .into(),
-            ]),
+        let control_items: Option<[Element<_>; 3]> =
+            match (steps.can_back(state), steps.can_next(state)) {
+                (true, true) => Some([
+                    sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
+                        .on_press(Message::BackPressed)
+                        .into(),
+                    Space::with_width(Length::Units(10)).into(),
+                    pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
+                        .on_press(Message::NextPressed)
+                        .into(),
+                ]),
 
-            (true, false) => Some([
-                sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
-                    .on_press(Message::BackPressed)
-                    .into(),
-                Space::with_width(Length::Units(10)).into(),
-                Space::with_width(Length::Units(btn_w)).into(),
-            ]),
+                (true, false) => Some([
+                    sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
+                        .on_press(Message::BackPressed)
+                        .into(),
+                    Space::with_width(Length::Units(10)).into(),
+                    Space::with_width(Length::Units(btn_w)).into(),
+                ]),
 
-            (false, true) => Some([
-                Space::with_width(Length::Units(10)).into(),
-                Space::with_width(Length::Units(btn_w)).into(),
-                pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
-                    .on_press(Message::NextPressed)
-                    .into(),
-            ]),
+                (false, true) => Some([
+                    Space::with_width(Length::Units(10)).into(),
+                    Space::with_width(Length::Units(btn_w)).into(),
+                    pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
+                        .on_press(Message::NextPressed)
+                        .into(),
+                ]),
 
-            (false, false) => None,
-        };
+                (false, false) => None,
+            };
         let mut controls = Row::new();
         if let Some(items) = control_items {
             for item in items {
@@ -253,4 +304,50 @@ impl<'a> Sandbox for MosaicVideo<'a> {
             .style(state.theme)
             .into()
     }
+
+    fn should_exit(&self) -> bool {
+        self.should_exit
+    }
+}
+
+impl MosaicVideo<'_> {
+    fn add_library(&mut self, path: &PathBuf) {
+        let Self { state, .. } = self;
+        let entries = match read_dir(path) {
+            Ok(entries) => entries,
+            Err(err) => {
+                error_dialog(state, err.to_string());
+                return;
+            }
+        };
+        let entries = entries
+            .filter_map(|res| match res.as_ref() {
+                Ok(entry) => {
+                    let path = entry.path();
+                    let ext = path
+                        .extension()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or_default();
+                    if path.is_file() && IMAGE_FILTER.contains(&ext) {
+                        Some(path)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        if !entries.is_empty() {
+            state.libraries.insert(path.clone(), entries);
+        }
+    }
+}
+
+fn error_dialog(state: &State, text: String) {
+    let _ = AsyncMessageDialog::new()
+        .set_level(MessageLevel::Error)
+        .set_title(state.i18n.error)
+        .set_description(text.as_str())
+        .show();
 }

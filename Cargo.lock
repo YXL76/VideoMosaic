@@ -2234,6 +2234,7 @@ dependencies = [
  "iced_native",
  "image_crawler",
  "image_diff",
+ "itertools",
  "rfd",
 ]
 

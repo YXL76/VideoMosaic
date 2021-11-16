@@ -4,11 +4,11 @@ mod choose_target;
 mod process;
 
 use {
-    crate::states::State,
+    crate::{states::State, streams::crawler},
     choose_library::ChooseLibrary,
     choose_method::ChooseMethod,
     choose_target::ChooseTarget,
-    iced::Element,
+    iced::{Element, Subscription},
     image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
     process::Process,
     std::path::PathBuf,
@@ -21,7 +21,11 @@ pub enum StepMessage {
     TargetType(TargetType),
     AddLocalLibrary,
     DeleteLocalLibrary(PathBuf),
-    Spider,
+    AddCrawler,
+    EditCrawler(usize, String),
+    StartCrawler(usize),
+    DeleteCrawler(usize),
+    CrawlerMessage(crawler::Progress),
     CalculationUnit(CalculationUnit),
     ColorSpace(ColorSpace),
     DistanceAlgorithm(DistanceAlgorithm),
@@ -31,7 +35,17 @@ pub enum StepMessage {
 trait Step<'a> {
     fn title(&self, state: &State) -> &str;
 
-    fn can_next(&self, state: &State) -> bool;
+    fn can_back(&self, _state: &State) -> bool {
+        true
+    }
+
+    fn can_next(&self, _state: &State) -> bool {
+        true
+    }
+
+    fn subscription(&self, _state: &State) -> Subscription<StepMessage> {
+        Subscription::none()
+    }
 
     fn view(&mut self, state: &State) -> Element<StepMessage>;
 }
@@ -44,6 +58,7 @@ pub struct Steps<'a> {
 }
 
 impl Steps<'_> {
+    #[inline(always)]
     fn new() -> Self {
         Self {
             cur: 0,
@@ -56,30 +71,41 @@ impl Steps<'_> {
         }
     }
 
+    #[inline(always)]
     pub fn title(&self, state: &State) -> &str {
         self.steps[self.cur].title(state)
     }
 
-    pub fn can_back(&self) -> bool {
-        self.cur > 0
+    #[inline(always)]
+    pub fn can_back(&self, state: &State) -> bool {
+        self.cur > 0 && self.steps[self.cur].can_back(state)
     }
 
+    #[inline(always)]
     pub fn can_next(&self, state: &State) -> bool {
         self.cur < STEPS_NUM - 1 && self.steps[self.cur].can_next(state)
     }
 
-    pub fn back(&mut self) {
-        if self.can_back() {
+    #[inline(always)]
+    pub fn back(&mut self, state: &State) {
+        if self.can_back(state) {
             self.cur -= 1;
         }
     }
 
+    #[inline(always)]
     pub fn next(&mut self, state: &State) {
         if self.can_next(state) {
             self.cur += 1;
         }
     }
 
+    #[inline(always)]
+    pub fn subscription(&self, state: &State) -> Subscription<StepMessage> {
+        self.steps[self.cur].subscription(state)
+    }
+
+    #[inline(always)]
     pub fn view(&mut self, state: &State) -> Element<StepMessage> {
         self.steps[self.cur].view(state)
     }

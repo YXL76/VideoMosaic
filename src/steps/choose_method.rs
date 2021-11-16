@@ -15,10 +15,6 @@ impl<'a> Step<'a> for ChooseMethod {
         state.i18n.choose_method
     }
 
-    fn can_next(&self, _state: &State) -> bool {
-        true
-    }
-
     fn view(&mut self, state: &State) -> Element<StepMessage> {
         let Self { scroll } = self;
 

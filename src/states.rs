@@ -1,5 +1,5 @@
 use {
-    crate::{steps::TargetType, styles::Theme},
+    crate::{steps::TargetType, streams::crawler, styles::Theme},
     image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
     std::{collections::HashMap, path::PathBuf},
 };
@@ -12,16 +12,30 @@ pub const VIDEO_FILTER: [&str; 1] = ["mp4"];
 pub struct State {
     pub i18n: &'static I18n,
     pub theme: Theme,
+
     pub target_type: TargetType,
     pub target_path: PathBuf,
+
     pub libraries: HashMap<PathBuf, Vec<PathBuf>>,
+    pub pending: Vec<String>,
+    pub crawler_id: usize,
+    pub crawlers: HashMap<usize, crawler::Crawler>,
+
     pub calc_unit: CalculationUnit,
     pub color_space: ColorSpace,
     pub dist_algo: DistanceAlgorithm,
 }
 
+impl State {
+    #[inline(always)]
+    pub fn is_full(&self) -> bool {
+        self.libraries.len() + self.pending.len() + self.crawlers.len() >= LIBRARY_BTN_CNT
+    }
+}
+
 pub struct I18n {
     pub symbol: &'static str,
+    pub error: &'static str,
 
     pub back: &'static str,
     pub next: &'static str,
@@ -60,6 +74,7 @@ impl Default for &I18n {
 
 pub const EN: I18n = I18n {
     symbol: "En",
+    error: "Error",
 
     back: "Back",
     next: "Next",
@@ -92,6 +107,7 @@ pub const EN: I18n = I18n {
 
 pub const ZH_CN: I18n = I18n {
     symbol: "中",
+    error: "错误",
 
     back: "后退",
     next: "前进",

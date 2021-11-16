@@ -14,18 +14,46 @@ use {
     },
 };
 
-pub fn crawler(keyword: String, num: usize, folder: PathBuf) -> Subscription<Progress> {
-    Subscription::from_recipe(Crawler {
-        keyword,
-        num,
-        folder,
-    })
-}
-
+#[derive(Debug, Clone)]
 pub struct Crawler {
+    id: usize,
     keyword: String,
     num: usize,
+    cnt: usize,
     folder: PathBuf,
+}
+
+impl Crawler {
+    #[inline(always)]
+    pub fn new(id: usize, keyword: String, num: usize, folder: PathBuf) -> Self {
+        Self {
+            id,
+            keyword,
+            num,
+            cnt: 0,
+            folder,
+        }
+    }
+
+    #[inline(always)]
+    pub fn subscription(&self) -> Subscription<Progress> {
+        Subscription::from_recipe(self.clone())
+    }
+
+    #[inline(always)]
+    pub fn add(&mut self) {
+        self.cnt += 100;
+    }
+
+    #[inline(always)]
+    pub fn percentage(&self) -> f32 {
+        self.cnt as f32 / self.num as f32
+    }
+
+    #[inline(always)]
+    pub fn folder(&self) -> &PathBuf {
+        &self.folder
+    }
 }
 
 impl<H, E> subscription::Recipe<H, E> for Crawler
@@ -37,10 +65,11 @@ where
     fn hash(&self, state: &mut H) {
         std::any::TypeId::of::<Self>().hash(state);
 
-        self.folder.hash(state);
+        self.id.hash(state);
     }
 
     fn stream(self: Box<Self>, _input: BoxStream<'static, E>) -> BoxStream<'static, Self::Output> {
+        let id = self.id;
         let keyword = self.keyword;
         let num = self.num;
         let folder = self.folder;
@@ -53,9 +82,9 @@ where
                         Some(match get_urls(keyword, num).await {
                             Ok((num, tasks)) => {
                                 let urls = Vec::with_capacity(num);
-                                (Progress::Started, State::Getting(tasks, urls, folder))
+                                (Progress::None, State::Getting(tasks, urls, folder))
                             }
-                            Err(_) => (Progress::Error, State::Finished),
+                            Err(e) => (Progress::Error(id, e.to_string()), State::Finished),
                         })
                     }
                     State::Getting(mut tasks, mut urls, folder) => Some(match tasks.pop_front() {
@@ -66,7 +95,7 @@ where
                             (Progress::None, State::Getting(tasks, urls, folder))
                         }
                         None => {
-                            let tasks = download_urls(urls, &IMAGE_FILTER, folder);
+                            let tasks = download_urls(urls, &IMAGE_FILTER, folder.clone());
                             (Progress::None, State::Downloading(tasks, false))
                         }
                     }),
@@ -75,9 +104,16 @@ where
                             if let Ok(true) = task.await {
                                 flag = true;
                             }
-                            (Progress::Downloading, State::Downloading(tasks, flag))
+                            (Progress::Downloading(id), State::Downloading(tasks, flag))
                         }
-                        None => (Progress::Finished, State::Finished),
+                        None => (
+                            if flag {
+                                Progress::Finished(id)
+                            } else {
+                                Progress::Error(id, String::from("No images were downloaded"))
+                            },
+                            State::Finished,
+                        ),
                     }),
                     State::Finished => None,
                 }
@@ -86,15 +122,15 @@ where
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum Progress {
-    Started,
-    Downloading,
-    Finished,
+    Downloading(usize),
+    Finished(usize),
     None,
-    Error,
+    Error(usize, String),
 }
 
+#[derive(Debug)]
 enum State {
     Ready(String, usize, PathBuf),
     Getting(

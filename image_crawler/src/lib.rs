@@ -29,8 +29,13 @@ const BASE_PARAMS: PARAMS = [
     ("rn", Cow::Borrowed("50")),
     ("tn", Cow::Borrowed("resultjson_com")),
 ];
+
 const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
 Chrome/95.0.4638.69 Safari/537.36";
+const HOST: &str = "image.baidu.com";
+const ACCEPT_ENCODING: &str = "gzip, deflate, br";
+const ACCEPT_LANGUAGE: &str = "zh-CN,zh;q=0.9";
+const REFERER: &str = "https://image.baidu.com/";
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize, Serialize)]
@@ -50,7 +55,7 @@ pub fn download_urls(
     filter: &'static [&str],
     folder: PathBuf,
 ) -> VecDeque<JoinHandle<Result<bool>>> {
-    let client = Arc::new(gen_client());
+    let client: Arc<Client> = Arc::new(gen_client().try_into().unwrap());
 
     urls.iter()
         .enumerate()
@@ -88,7 +93,7 @@ pub async fn get_urls(
     keyword: String,
     num: usize,
 ) -> Result<(usize, VecDeque<JoinHandle<Result<Vec<String>>>>)> {
-    let client = Arc::new(gen_client());
+    let client: Arc<Client> = Arc::new(gen_client().try_into().unwrap());
 
     let mut params = BASE_PARAMS.clone();
     params[0].1 = keyword.clone().into();
@@ -129,14 +134,20 @@ async fn get_part_urls(
     Ok(ret)
 }
 
-fn gen_client() -> Client {
+fn gen_client() -> Config {
     Config::new()
         .set_http_keep_alive(true)
         .set_max_connections_per_host(CONCURRENT)
         .set_timeout(Some(Duration::from_secs(TIMEOUT)))
-        .add_header("user-agent", USER_AGENT)
+        .add_header("User-Agent", USER_AGENT)
         .unwrap()
-        .try_into()
+        .add_header("Host", HOST)
+        .unwrap()
+        .add_header("Accept-Encoding", ACCEPT_ENCODING)
+        .unwrap()
+        .add_header("Accept-Language", ACCEPT_LANGUAGE)
+        .unwrap()
+        .add_header("Referer", REFERER)
         .unwrap()
 }
 
