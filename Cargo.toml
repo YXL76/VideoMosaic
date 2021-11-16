@@ -20,6 +20,8 @@ rfd = "0.5"
 git = "https://github.com/iced-rs/iced"
 features = ["image", "async-std"]
 
+[dependencies.iced_native]
+git = "https://github.com/iced-rs/iced"
 
 [profile.release]
 lto = true

@@ -5,9 +5,11 @@ use {
         task::{spawn, JoinHandle},
     },
     serde::{Deserialize, Serialize},
-    std::{borrow::Cow, path::PathBuf, sync::Arc, time::Duration},
-    surf::{Client, Config, Result, Url},
+    std::{borrow::Cow, collections::VecDeque, path::PathBuf, sync::Arc, time::Duration},
+    surf::{Client, Config, Url},
 };
+
+pub use surf::Result;
 
 type PARAMS = [(&'static str, Cow<'static, str>); 10];
 
@@ -47,7 +49,7 @@ pub fn download_urls(
     urls: Vec<String>,
     filter: &'static [&str],
     folder: PathBuf,
-) -> Vec<JoinHandle<Result<bool>>> {
+) -> VecDeque<JoinHandle<Result<bool>>> {
     let client = Arc::new(gen_client());
 
     urls.iter()
@@ -57,7 +59,7 @@ pub fn download_urls(
             let client = client.clone();
             spawn(download_url(url, client, filter, folder.clone(), idx))
         })
-        .collect::<Vec<_>>()
+        .collect::<VecDeque<_>>()
 }
 
 async fn download_url(
@@ -85,7 +87,7 @@ async fn download_url(
 pub async fn get_urls(
     keyword: String,
     num: usize,
-) -> Result<(usize, Vec<JoinHandle<Result<Vec<String>>>>)> {
+) -> Result<(usize, VecDeque<JoinHandle<Result<Vec<String>>>>)> {
     let client = Arc::new(gen_client());
 
     let mut params = BASE_PARAMS.clone();
@@ -103,7 +105,7 @@ pub async fn get_urls(
             let client = client.clone();
             spawn(get_part_urls(start.to_string(), params.clone(), client))
         })
-        .collect::<Vec<_>>();
+        .collect::<VecDeque<_>>();
 
     Ok((num, tasks))
 }

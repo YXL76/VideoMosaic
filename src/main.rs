@@ -1,5 +1,6 @@
 mod states;
 mod steps;
+mod streams;
 mod styles;
 mod widgets;
 
@@ -8,7 +9,7 @@ use {
         button, window, Column, Container, Element, Length, Row, Sandbox, Settings, Space, Text,
     },
     rfd::{FileDialog, MessageButtons, MessageDialog},
-    states::{State, EN, LIBRARY_BTN_CNT, ZH_CN},
+    states::{State, EN, IMAGE_FILTER, LIBRARY_BTN_CNT, VIDEO_FILTER, ZH_CN},
     std::fs::read_dir,
     steps::{StepMessage, Steps, TargetType},
     styles::{spacings, Theme},
@@ -61,9 +62,6 @@ impl<'a> Sandbox for MosaicVideo<'a> {
     }
 
     fn update(&mut self, message: Message) {
-        const IMAGE_FILTER: [&str; 3] = ["png", "jpg", "jpeg"];
-        const VIDEO_FILTER: [&str; 1] = ["mp4"];
-
         let Self { state, steps, .. } = self;
 
         match message {

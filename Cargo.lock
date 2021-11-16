@@ -2231,6 +2231,7 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "iced",
+ "iced_native",
  "image_crawler",
  "image_diff",
  "rfd",
