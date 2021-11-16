@@ -1,24 +1,31 @@
 use {
-    async_std::{fs::File, io::WriteExt},
-    futures::stream::{FuturesUnordered, StreamExt},
+    async_std::{
+        fs::File,
+        io::WriteExt,
+        task::{spawn, JoinHandle},
+    },
     serde::{Deserialize, Serialize},
-    std::{convert::TryInto, path::PathBuf, time::Duration},
+    std::{borrow::Cow, path::PathBuf, sync::Arc, time::Duration},
     surf::{Client, Config, Result, Url},
 };
+
+type PARAMS = [(&'static str, Cow<'static, str>); 10];
 
 const BASE_URL: &str = "https://image.baidu.com/search/acjson";
 const PAGE_NUM: usize = 50;
 const TIMEOUT: u64 = 60;
 const CONCURRENT: usize = 24;
-const BASE_PARAMS: [(&str, &str); 8] = [
-    ("pn", "0"),
-    ("face", "0"),
-    ("ie", "utf-8"),
-    ("ipn", "rj"),
-    ("oe", "utf-8"),
-    ("pn", "0"),
-    ("rn", "50"),
-    ("tn", "resultjson_com"),
+const BASE_PARAMS: PARAMS = [
+    ("queryWord", Cow::Borrowed("")),
+    ("word", Cow::Borrowed("")),
+    ("pn", Cow::Borrowed("0")),
+    ("face", Cow::Borrowed("0")),
+    ("ie", Cow::Borrowed("utf-8")),
+    ("ipn", Cow::Borrowed("rj")),
+    ("oe", Cow::Borrowed("utf-8")),
+    ("pn", Cow::Borrowed("0")),
+    ("rn", Cow::Borrowed("50")),
+    ("tn", Cow::Borrowed("resultjson_com")),
 ];
 const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
 Chrome/95.0.4638.69 Safari/537.36";
@@ -36,34 +43,28 @@ struct Res {
     data: Vec<ImgData>,
 }
 
-pub async fn download_urls(urls: Vec<String>, filter: &[&str], folder: PathBuf) -> Result<bool> {
-    let client: Client = Config::new()
-        .set_http_keep_alive(true)
-        .set_max_connections_per_host(CONCURRENT)
-        .set_timeout(Some(Duration::from_secs(TIMEOUT)))
-        .add_header("user-agent", USER_AGENT)?
-        .try_into()?;
+pub fn download_urls(
+    urls: Vec<String>,
+    filter: &'static [&str],
+    folder: PathBuf,
+) -> Vec<JoinHandle<Result<bool>>> {
+    let client = Arc::new(gen_client());
 
-    let mut reqs = urls
-        .iter()
+    urls.iter()
         .enumerate()
-        .map(|(idx, url)| download_url(url, &client, filter, &folder, idx))
-        .collect::<FuturesUnordered<_>>();
-
-    let mut ans = false;
-    while let Some(ret) = reqs.next().await {
-        if let Ok(true) = ret {
-            ans = true;
-        }
-    }
-    Ok(ans)
+        .map(|(idx, url)| {
+            let url = url.clone();
+            let client = client.clone();
+            spawn(download_url(url, client, filter, folder.clone(), idx))
+        })
+        .collect::<Vec<_>>()
 }
 
 async fn download_url(
-    url: &String,
-    client: &Client,
+    url: String,
+    client: Arc<Client>,
     filter: &[&str],
-    folder: &PathBuf,
+    folder: PathBuf,
     idx: usize,
 ) -> Result<bool> {
     let mut res = client.get(url).await?;
@@ -81,69 +82,88 @@ async fn download_url(
     Ok(false)
 }
 
-pub async fn get_urls(keyword: &str, num: usize) -> Result<Vec<String>> {
-    let client: Client = Config::new()
-        .set_http_keep_alive(true)
-        .set_max_connections_per_host(CONCURRENT)
-        .set_timeout(Some(Duration::from_secs(TIMEOUT)))
-        .add_header("user-agent", USER_AGENT)?
-        .try_into()?;
+pub async fn get_urls(
+    keyword: String,
+    num: usize,
+) -> Result<(usize, Vec<JoinHandle<Result<Vec<String>>>>)> {
+    let client = Arc::new(gen_client());
 
-    let mut params = BASE_PARAMS.to_vec();
-    params.push(("queryWord", keyword));
-    params.push(("word", keyword));
+    let mut params = BASE_PARAMS.clone();
+    params[0].1 = keyword.clone().into();
+    params[1].1 = keyword.into();
     let url = Url::parse_with_params(BASE_URL, &params).unwrap();
 
     let mut res = client.get(url).await?;
     let Res { displayNum, .. } = res.body_json().await?;
     let num = num.min(displayNum);
 
-    let mut reqs = (0..num)
+    let tasks = (0..num)
         .step_by(PAGE_NUM)
-        .map(|start| get_part_urls(start.to_string(), params.clone(), &client))
-        .collect::<FuturesUnordered<_>>();
+        .map(|start| {
+            let client = client.clone();
+            spawn(get_part_urls(start.to_string(), params.clone(), client))
+        })
+        .collect::<Vec<_>>();
 
-    let mut ans = Vec::with_capacity(num);
-    while let Some(ret) = reqs.next().await {
-        if let Ok(ret) = ret.as_ref() {
-            ans.extend_from_slice(ret);
-        }
-    }
-    Ok(ans)
+    Ok((num, tasks))
 }
 
 async fn get_part_urls(
     start: String,
-    mut params: Vec<(&str, &str)>,
-    client: &Client,
+    mut params: PARAMS,
+    client: Arc<Client>,
 ) -> Result<Vec<String>> {
-    params[0].1 = start.as_str();
+    params[2].1 = start.into();
     let url = Url::parse_with_params(BASE_URL, &params).unwrap();
     let mut res = client.get(url).await?;
     let Res { data, .. } = res.body_json().await?;
 
     let mut ret = Vec::with_capacity(data.len());
-    for i in data {
-        if let Some(str) = i.thumbURL {
+    for ImgData { thumbURL } in data {
+        if let Some(str) = thumbURL {
             ret.push(str);
         }
     }
     Ok(ret)
 }
 
+fn gen_client() -> Client {
+    Config::new()
+        .set_http_keep_alive(true)
+        .set_max_connections_per_host(CONCURRENT)
+        .set_timeout(Some(Duration::from_secs(TIMEOUT)))
+        .add_header("user-agent", USER_AGENT)
+        .unwrap()
+        .try_into()
+        .unwrap()
+}
+
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn get_urls() {
-        use {crate::PAGE_NUM, async_std::task::block_on};
-        block_on(super::get_urls("风景", PAGE_NUM * 2)).unwrap();
+    use {crate::PAGE_NUM, async_std::task::block_on, std::path::PathBuf};
+
+    fn get_urls() -> Vec<String> {
+        block_on(async {
+            let (num, tasks) = super::get_urls("风景".into(), PAGE_NUM * 2).await.unwrap();
+            let mut urls = Vec::with_capacity(num);
+            for task in tasks {
+                if let Ok(ret) = task.await {
+                    urls.extend_from_slice(&ret);
+                }
+            }
+            urls
+        })
     }
 
     #[test]
     fn download_urls() {
-        use {crate::PAGE_NUM, async_std::task::block_on, std::path::PathBuf};
-        let urls = block_on(super::get_urls("风景", PAGE_NUM * 2)).unwrap();
-        let filter = ["png", "jpeg", "jpg"];
-        block_on(super::download_urls(urls, &filter, PathBuf::new())).unwrap();
+        const FILTER: [&str; 3] = ["png", "jpeg", "jpg"];
+
+        let urls = get_urls();
+        block_on(async {
+            for task in super::download_urls(urls, &FILTER, PathBuf::new()) {
+                let _ = task.await;
+            }
+        });
     }
 }
