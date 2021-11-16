@@ -160,7 +160,7 @@ mod tests {
         )
         .run(
             &PathBuf::from("../static/images/testdata.jpg"),
-            &read_dir("../image_crawler")
+            &read_dir("../image_crawler/test")
                 .unwrap()
                 .filter_map(|res| {
                     if let Ok(entry) = res.as_ref() {

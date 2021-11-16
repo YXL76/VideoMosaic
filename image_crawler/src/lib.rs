@@ -140,7 +140,14 @@ fn gen_client() -> Client {
 
 #[cfg(test)]
 mod tests {
-    use {crate::PAGE_NUM, async_std::task::block_on, std::path::PathBuf};
+    use {
+        super::PAGE_NUM,
+        async_std::task::block_on,
+        std::{
+            fs::{create_dir, remove_dir_all},
+            path::PathBuf,
+        },
+    };
 
     fn get_urls() -> Vec<String> {
         block_on(async {
@@ -161,7 +168,11 @@ mod tests {
 
         let urls = get_urls();
         block_on(async {
-            for task in super::download_urls(urls, &FILTER, PathBuf::new()) {
+            let folder = PathBuf::from("test");
+            let _ = remove_dir_all(&folder);
+            create_dir(&folder).unwrap();
+            let tasks = super::download_urls(urls, &FILTER, folder);
+            for task in tasks {
                 let _ = task.await;
             }
         });
