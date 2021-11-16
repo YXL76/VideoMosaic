@@ -36,6 +36,8 @@ impl State {
 pub struct I18n {
     pub symbol: &'static str,
     pub error: &'static str,
+    pub exit: &'static str,
+    pub exit_hint: &'static str,
 
     pub back: &'static str,
     pub next: &'static str,
@@ -75,6 +77,8 @@ impl Default for &I18n {
 pub const EN: I18n = I18n {
     symbol: "En",
     error: "Error",
+    exit: "Exit",
+    exit_hint: "Are you sure to exit?",
 
     back: "Back",
     next: "Next",
@@ -108,6 +112,8 @@ pub const EN: I18n = I18n {
 pub const ZH_CN: I18n = I18n {
     symbol: "中",
     error: "错误",
+    exit: "退出",
+    exit_hint: "你确定要退出吗？",
 
     back: "后退",
     next: "前进",

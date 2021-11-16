@@ -27,6 +27,7 @@ pub fn main() -> iced::Result {
     MosaicVideo::run(Settings {
         window: window::Settings {
             position: window::Position::Centered,
+            decorations: false,
             ..window::Settings::default()
         },
         text_multithreading: true,
@@ -41,6 +42,7 @@ struct MosaicVideo<'a> {
 
     i18n_btn: button::State,
     theme_btn: button::State,
+    exit_btn: button::State,
     back_btn: button::State,
     next_btn: button::State,
 
@@ -53,6 +55,7 @@ struct MosaicVideo<'a> {
 enum Message {
     I18nPressed,
     ThemePressed,
+    ExitPressed,
     BackPressed,
     NextPressed,
     NativeEvent(iced_native::Event),
@@ -85,6 +88,17 @@ impl<'a> Application for MosaicVideo<'a> {
                 state.theme = match state.theme {
                     Theme::Light => Theme::Dark,
                     Theme::Dark => Theme::Light,
+                }
+            }
+            Message::ExitPressed => {
+                if MessageDialog::new()
+                    .set_level(MessageLevel::Warning)
+                    .set_title(state.i18n.exit)
+                    .set_description(state.i18n.exit_hint)
+                    .set_buttons(MessageButtons::YesNo)
+                    .show()
+                {
+                    self.should_exit = true;
                 }
             }
             Message::BackPressed => steps.back(state),
@@ -126,6 +140,7 @@ impl<'a> Application for MosaicVideo<'a> {
                 }
                 StepMessage::DeleteLocalLibrary(folder) => {
                     if MessageDialog::new()
+                        .set_level(MessageLevel::Warning)
                         .set_title(state.i18n.delete)
                         .set_description(state.i18n.delete_desc)
                         .set_buttons(MessageButtons::YesNo)
@@ -227,6 +242,7 @@ impl<'a> Application for MosaicVideo<'a> {
             state,
             i18n_btn,
             theme_btn,
+            exit_btn,
             back_btn,
             next_btn,
             steps,
@@ -235,16 +251,21 @@ impl<'a> Application for MosaicVideo<'a> {
 
         let i18n_l = btn_text(state.i18n.symbol);
         let theme_l = btn_icon(state.theme.symbol());
+        let close_l = btn_icon("\u{f156}");
         let header = Row::new()
+            .spacing(spacings::_3)
             .push(Text::new(title).size(spacings::_12).width(Length::Fill))
             .push(
                 rou_btn(i18n_btn, i18n_l, spacings::_12, &state.theme)
                     .on_press(Message::I18nPressed),
             )
-            .push(Space::with_width(Length::Units(spacings::_3)))
             .push(
                 rou_btn(theme_btn, theme_l, spacings::_12, &state.theme)
                     .on_press(Message::ThemePressed),
+            )
+            .push(
+                rou_btn(exit_btn, close_l, spacings::_12, &state.theme)
+                    .on_press(Message::ExitPressed),
             );
 
         let back_i = btn_icon("\u{f141} ");
