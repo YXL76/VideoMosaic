@@ -1,6 +1,7 @@
 use {
-    super::{Distance, Process, ProcessResult, ProcessStep},
+    super::{Distance, Process, ProcessStep},
     crate::utils::{Color, RawColor},
+    anyhow::Result,
     image::{self, RgbImage},
     parking_lot::Mutex,
     rayon::prelude::*,
@@ -17,7 +18,7 @@ pub struct PixelProc<T: Color> {
 
 impl<T: Color> Process for PixelProc<T> {
     #[inline(always)]
-    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
+    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> Result<RgbImage> {
         self.do_run(target, library)
     }
 }

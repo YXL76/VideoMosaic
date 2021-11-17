@@ -7,6 +7,7 @@ use {
         utils::{ciede2000, Color, RawColor, HSV, SRBG},
         CalculationUnit, ColorSpace, DistanceAlgorithm,
     },
+    anyhow::{anyhow, Result},
     average::AverageProc,
     image::{imageops::FilterType, ImageBuffer, RgbImage},
     kmeans::KMeansProc,
@@ -17,18 +18,17 @@ use {
     std::path::PathBuf,
 };
 
-type ProcessResult<T> = Result<T, &'static str>;
 type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
 
 trait Process {
-    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage>;
+    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> Result<RgbImage>;
 }
 
 trait ProcessStep<T: Color> {
     type Item: Sync + Send;
 
     #[inline(always)]
-    fn do_run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage>
+    fn do_run(&self, target: &PathBuf, library: &[PathBuf]) -> Result<RgbImage>
     where
         Self: Sync + Send,
     {
@@ -38,7 +38,7 @@ trait ProcessStep<T: Color> {
     fn size(&self) -> u32;
 
     #[inline(always)]
-    fn index(&self, libraries: &[PathBuf]) -> ProcessResult<Vec<Self::Item>>
+    fn index(&self, libraries: &[PathBuf]) -> Result<Vec<Self::Item>>
     where
         Self: Sync + Send,
     {
@@ -53,17 +53,17 @@ trait ProcessStep<T: Color> {
         });
         let vec = vec.into_inner();
         if vec.is_empty() {
-            return Err("");
+            return Err(anyhow!("Library is empty."));
         }
         Ok(vec)
     }
 
     #[inline(always)]
-    fn fill(&self, target: &PathBuf, lib: Vec<Self::Item>) -> ProcessResult<RgbImage>
+    fn fill(&self, target: &PathBuf, lib: Vec<Self::Item>) -> Result<RgbImage>
     where
         Self: Sync + Send,
     {
-        let img = image::open(target).unwrap().into_rgb8();
+        let img = image::open(target)?.into_rgb8();
         let (width, height) = img.dimensions();
         let imgbuf: Mutex<RgbImage> = Mutex::new(ImageBuffer::new(width, height));
 
@@ -149,7 +149,7 @@ impl ProcessWrapper {
         })
     }
 
-    pub fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
+    pub fn run(&self, target: &PathBuf, library: &[PathBuf]) -> Result<RgbImage> {
         self.0.run(target, library)
     }
 }

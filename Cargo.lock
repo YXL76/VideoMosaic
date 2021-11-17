@@ -1610,6 +1610,7 @@ dependencies = [
 name = "image_diff"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "ffmpeg-next",
  "image",
  "kmeans_colors",

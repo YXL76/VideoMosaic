@@ -1,6 +1,7 @@
 use {
-    super::{ColorSpace, Distance, Process, ProcessResult, ProcessStep},
+    super::{ColorSpace, Distance, Process, ProcessStep},
     crate::utils::{Color, RawColor},
+    anyhow::Result,
     image::{self, RgbImage},
     kmeans_colors::{get_kmeans, Kmeans},
     palette::{IntoColor, Pixel, Srgb},
@@ -19,7 +20,7 @@ pub struct KMeansProc<T: Color> {
 
 impl<T: Color> Process for KMeansProc<T> {
     #[inline(always)]
-    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> ProcessResult<RgbImage> {
+    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> Result<RgbImage> {
         self.do_run(target, library)
     }
 }
