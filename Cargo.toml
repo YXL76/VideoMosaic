@@ -11,6 +11,7 @@ repository = "https://github.com/YXL76/MosaicVideo"
 # See more keys and their definitions at hpalettettps://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0"
 async-std = "1.10"
 image_crawler = { path = "image_crawler" }
 image_diff = { path = "image_diff" }

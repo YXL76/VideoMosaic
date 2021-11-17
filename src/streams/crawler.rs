@@ -1,16 +1,18 @@
 use {
     crate::states::IMAGE_FILTER,
+    anyhow::Result,
     async_std::task::JoinHandle,
     iced::{
         futures::stream::{unfold, BoxStream},
         Subscription,
     },
     iced_native::subscription,
-    image_crawler::{download_urls, get_urls, Result},
+    image_crawler::{download_urls, gen_client, get_urls, HttpClient},
     std::{
         collections::VecDeque,
         hash::{Hash, Hasher},
         path::PathBuf,
+        sync::Arc,
     },
 };
 
@@ -74,31 +76,36 @@ where
         let num = self.num;
         let folder = self.folder;
 
+        let client = Arc::new(gen_client());
+
         Box::pin(unfold(
-            State::Ready(keyword, num, folder),
+            State::Ready(client, keyword, num, folder),
             move |state| async move {
                 match state {
-                    State::Ready(keyword, num, folder) => {
-                        Some(match get_urls(keyword, num).await {
+                    State::Ready(client, keyword, num, folder) => {
+                        Some(match get_urls(client.clone(), keyword, num).await {
                             Ok((num, tasks)) => {
                                 let urls = Vec::with_capacity(num);
-                                (Progress::None, State::Getting(tasks, urls, folder))
+                                (Progress::None, State::Getting(client, tasks, urls, folder))
                             }
                             Err(e) => (Progress::Error(id, e.to_string()), State::Finished),
                         })
                     }
-                    State::Getting(mut tasks, mut urls, folder) => Some(match tasks.pop_front() {
-                        Some(task) => {
-                            if let Ok(ret) = task.await {
-                                urls.extend_from_slice(&ret);
+                    State::Getting(client, mut tasks, mut urls, folder) => {
+                        Some(match tasks.pop_front() {
+                            Some(task) => {
+                                if let Ok(ret) = task.await {
+                                    urls.extend_from_slice(&ret);
+                                }
+                                (Progress::None, State::Getting(client, tasks, urls, folder))
                             }
-                            (Progress::None, State::Getting(tasks, urls, folder))
-                        }
-                        None => {
-                            let tasks = download_urls(urls, &IMAGE_FILTER, folder.clone());
-                            (Progress::None, State::Downloading(tasks, false))
-                        }
-                    }),
+                            None => {
+                                let tasks =
+                                    download_urls(client, urls, &IMAGE_FILTER, folder.clone());
+                                (Progress::None, State::Downloading(tasks, false))
+                            }
+                        })
+                    }
                     State::Downloading(mut tasks, mut flag) => Some(match tasks.pop_front() {
                         Some(task) => {
                             if let Ok(true) = task.await {
@@ -132,8 +139,9 @@ pub enum Progress {
 
 #[derive(Debug)]
 enum State {
-    Ready(String, usize, PathBuf),
+    Ready(Arc<HttpClient>, String, usize, PathBuf),
     Getting(
+        Arc<HttpClient>,
         VecDeque<JoinHandle<Result<Vec<String>>>>,
         Vec<String>,
         PathBuf,

@@ -90,23 +90,13 @@ impl<'a> Application for MosaicVideo<'a> {
                     Theme::Dark => Theme::Light,
                 }
             }
-            Message::ExitPressed => {
-                if MessageDialog::new()
-                    .set_level(MessageLevel::Warning)
-                    .set_title(state.i18n.exit)
-                    .set_description(state.i18n.exit_hint)
-                    .set_buttons(MessageButtons::YesNo)
-                    .show()
-                {
-                    self.should_exit = true;
-                }
-            }
+            Message::ExitPressed => self.try_exit(),
             Message::BackPressed => steps.back(state),
             Message::NextPressed => steps.next(state),
 
             Message::NativeEvent(ev) => {
                 if let iced_native::Event::Window(iced_native::window::Event::CloseRequested) = ev {
-                    self.should_exit = true;
+                    self.try_exit();
                 }
             }
 
@@ -361,6 +351,18 @@ impl MosaicVideo<'_> {
             .collect::<Vec<_>>();
         if !entries.is_empty() {
             state.libraries.insert(path.clone(), entries);
+        }
+    }
+
+    fn try_exit(&mut self) {
+        if MessageDialog::new()
+            .set_level(MessageLevel::Warning)
+            .set_title(self.state.i18n.exit)
+            .set_description(self.state.i18n.exit_hint)
+            .set_buttons(MessageButtons::YesNo)
+            .show()
+        {
+            self.should_exit = true;
         }
     }
 }

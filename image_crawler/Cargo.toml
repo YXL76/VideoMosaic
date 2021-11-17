@@ -8,6 +8,16 @@ authors = ["YXL76 <chenxin.lan.76@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0"
 async-std = "1.10"
-serde = "1.0"
-surf = "2.3"
+http = "0.2.5"
+mime = "0.3"
+urlencoding = "2.1"
+
+[dependencies.isahc]
+version = "1.6"
+features = ["json"]
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
