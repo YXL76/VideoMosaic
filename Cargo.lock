@@ -1611,12 +1611,11 @@ name = "image_diff"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-std",
  "ffmpeg-next",
  "image",
  "kmeans_colors",
  "palette",
- "parking_lot",
- "rayon",
 ]
 
 [[package]]

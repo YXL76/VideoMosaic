@@ -1,88 +1,80 @@
 use {
-    super::{Distance, Process, ProcessStep},
-    crate::utils::{Color, RawColor},
-    anyhow::Result,
+    super::{Converter, Distance, LibItem, Mask, Process, ProcessStep},
+    crate::utils::RawColor,
     image::{self, RgbImage},
-    parking_lot::Mutex,
-    rayon::prelude::*,
-    std::{marker::PhantomData, path::PathBuf},
+    std::sync::Arc,
 };
 
-pub struct AverageProc<T: Color> {
+pub(super) struct AverageProc(Arc<Inner>);
+
+pub(super) struct Inner {
     size: u32,
+    converter: Converter,
     distance: Distance,
-    color: PhantomData<T>,
 }
 
-impl<T: Color> Process for AverageProc<T> {
-    #[inline(always)]
-    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> Result<RgbImage> {
-        self.do_run(target, library)
-    }
-}
-
-impl<T: Color> ProcessStep<T> for AverageProc<T> {
-    type Item = (RawColor, Box<RgbImage>);
-
+impl Process for AverageProc {
     #[inline(always)]
     fn size(&self) -> u32 {
-        self.size
+        self.0.size
     }
 
     #[inline(always)]
-    fn index_step(&self, img: RgbImage) -> Self::Item {
+    fn inner(&self) -> Arc<dyn ProcessStep + Sync + Send + 'static> {
+        self.0.clone()
+    }
+}
+
+impl ProcessStep for Inner {
+    #[inline(always)]
+    fn index_step(&self, img: RgbImage) -> LibItem {
         (
-            self.average(&img, 0, 0, self.size, self.size),
-            Box::new(img),
+            vec![self.average(&img, (0, 0, self.size, self.size))],
+            Arc::new(img),
         )
     }
 
     #[inline(always)]
     fn fill_step(
         &self,
-        img: &RgbImage,
-        x: u32,
-        y: u32,
-        w: u32,
-        h: u32,
-        lib: &Vec<Self::Item>,
-        buf: &Mutex<RgbImage>,
-    ) {
+        img: Arc<RgbImage>,
+        mask: Mask,
+        lib: Arc<Vec<LibItem>>,
+    ) -> (Mask, Arc<RgbImage>) {
         let Self { distance, .. } = self;
-        let raw = self.average(img, x, y, w, h);
+        let raw = self.average(&img, mask);
 
         let (_, replace) = lib
-            .par_iter()
-            .min_by(|(a, _), (b, _)| distance(a, &raw).partial_cmp(&distance(b, &raw)).unwrap())
+            .iter()
+            .min_by(|(a, _), (b, _)| {
+                distance(&a[0], &raw)
+                    .partial_cmp(&distance(&b[0], &raw))
+                    .unwrap()
+            })
             .unwrap();
 
-        {
-            let mut guard = buf.lock();
-            for j in 0..h {
-                for i in 0..w {
-                    let p = replace.get_pixel(i, j);
-                    guard.put_pixel(i + x, j + y, *p);
-                }
-            }
-        }
+        (mask, replace.clone())
     }
 }
 
-impl<T: Color> AverageProc<T> {
-    pub fn new(size: u32, distance: Distance) -> Self {
-        Self {
+impl AverageProc {
+    pub(super) fn new(size: u32, converter: Converter, distance: Distance) -> Self {
+        Self(Arc::new(Inner {
             size,
+            converter,
             distance,
-            color: PhantomData::default(),
-        }
+        }))
     }
+}
 
+impl Inner {
     // #[inline(always)]
-    fn average(&self, img: &RgbImage, x: u32, y: u32, w: u32, h: u32) -> RawColor {
+    fn average(&self, img: &RgbImage, (x, y, w, h): Mask) -> RawColor {
+        let Self { converter, .. } = self;
         let mut ans = [0f32; 3];
         for j in y..(y + h) {
             for i in x..(x + w) {
-                let raw = Self::converter(&img.get_pixel(i, j).0);
+                let raw = converter(&img.get_pixel(i, j).0);
                 ans[0] += raw[0];
                 ans[1] += raw[1];
                 ans[2] += raw[2];

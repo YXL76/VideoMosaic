@@ -4,101 +4,95 @@ mod pixel;
 
 use {
     crate::{
-        utils::{ciede2000, Color, RawColor, HSV, SRBG},
+        utils::{ciede2000, converter, RawColor, HSV, SRBG},
         CalculationUnit, ColorSpace, DistanceAlgorithm,
     },
-    anyhow::{anyhow, Result},
+    anyhow::Result,
+    async_std::task::{spawn_blocking, JoinHandle},
     average::AverageProc,
-    image::{imageops::FilterType, ImageBuffer, RgbImage},
+    image::{imageops::FilterType, RgbImage},
     kmeans::KMeansProc,
-    palette::{IntoColor, Lab, Pixel, Srgb},
-    parking_lot::Mutex,
+    palette::{Lab, Pixel},
     pixel::PixelProc,
-    rayon::prelude::*,
-    std::path::PathBuf,
+    std::{path::PathBuf, sync::Arc},
 };
 
+type Mask = (u32, u32, u32, u32);
+type Tasks<T> = Vec<JoinHandle<T>>;
+type LibItem = (Vec<RawColor>, Arc<RgbImage>);
+type Converter = Box<dyn Fn(&[u8; 3]) -> RawColor + Sync + Send>;
 type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
 
 trait Process {
-    fn run(&self, target: &PathBuf, library: &[PathBuf]) -> Result<RgbImage>;
-}
-
-trait ProcessStep<T: Color> {
-    type Item: Sync + Send;
-
-    #[inline(always)]
-    fn do_run(&self, target: &PathBuf, library: &[PathBuf]) -> Result<RgbImage>
-    where
-        Self: Sync + Send,
-    {
-        self.fill(target, self.index(library)?)
-    }
-
     fn size(&self) -> u32;
 
+    fn inner(&self) -> Arc<dyn ProcessStep + Sync + Send + 'static>;
+
     #[inline(always)]
-    fn index(&self, libraries: &[PathBuf]) -> Result<Vec<Self::Item>>
-    where
-        Self: Sync + Send,
-    {
-        let vec = Mutex::new(Vec::with_capacity(libraries.len()));
-        libraries.into_par_iter().for_each(|lib| {
-            if let Ok(img) = image::open(lib) {
-                let img = img
-                    .resize_to_fill(self.size(), self.size(), FilterType::Nearest)
-                    .into_rgb8();
-                vec.lock().push(self.index_step(img));
-            }
-        });
-        let vec = vec.into_inner();
-        if vec.is_empty() {
-            return Err(anyhow!("Library is empty."));
-        }
-        Ok(vec)
+    fn index(&self, libraries: &[PathBuf]) -> Tasks<Option<LibItem>> {
+        libraries
+            .iter()
+            .map(|lib| {
+                let lib = lib.clone();
+                let size = self.size();
+                let inner = self.inner();
+                spawn_blocking(move || {
+                    if let Ok(img) = image::open(lib) {
+                        let img = img
+                            .resize_to_fill(size, size, FilterType::Nearest)
+                            .into_rgb8();
+                        return Some(inner.index_step(img));
+                    }
+                    None
+                })
+            })
+            .collect::<Vec<_>>()
     }
 
     #[inline(always)]
-    fn fill(&self, target: &PathBuf, lib: Vec<Self::Item>) -> Result<RgbImage>
-    where
-        Self: Sync + Send,
-    {
+    fn mask(&self, target: &PathBuf) -> Result<(Arc<RgbImage>, Vec<Mask>)> {
         let img = image::open(target)?.into_rgb8();
         let (width, height) = img.dimensions();
-        let imgbuf: Mutex<RgbImage> = Mutex::new(ImageBuffer::new(width, height));
-
-        for y in (0..height).step_by(self.size() as usize) {
-            (0..width)
-                .into_par_iter()
-                .step_by(self.size() as usize)
-                .for_each(|x| {
-                    let w = self.size().min(width - x);
-                    let h = self.size().min(height - y);
-                    self.fill_step(&img, x, y, w, h, &lib, &imgbuf);
-                })
+        let size = self.size();
+        let mut mask = Vec::with_capacity((((width / size) + 1) * ((height / size) + 1)) as usize);
+        for y in (0..height).step_by(size as usize) {
+            for x in (0..width).step_by(size as usize) {
+                let w = size.min(width - x);
+                let h = size.min(height - y);
+                mask.push((x, y, w, h));
+            }
         }
-
-        Ok(imgbuf.into_inner())
+        Ok((Arc::new(img), mask))
     }
 
-    fn index_step(&self, img: RgbImage) -> Self::Item;
+    #[inline(always)]
+    fn fill(
+        &self,
+        img: Arc<RgbImage>,
+        lib: Arc<Vec<LibItem>>,
+        masks: &Vec<Mask>,
+    ) -> Tasks<(Mask, Arc<RgbImage>)> {
+        masks
+            .iter()
+            .map(|&mask| {
+                let img = img.clone();
+                let lib = lib.clone();
+                let inner = self.inner();
+                spawn_blocking(move || inner.fill_step(img, mask, lib))
+            })
+            .collect::<Vec<_>>()
+    }
+}
+
+trait ProcessStep {
+    fn index_step(&self, img: RgbImage) -> LibItem;
 
     fn fill_step(
         &self,
-        img: &RgbImage,
-        x: u32,
-        y: u32,
-        w: u32,
-        h: u32,
-        lib: &Vec<Self::Item>,
-        buf: &Mutex<RgbImage>,
-    );
-
-    #[inline(always)]
-    fn converter(rgb: &[u8; 3]) -> RawColor {
-        let color: T = Srgb::from_raw(rgb).into_format::<f32>().into_color();
-        color.into_raw()
-    }
+        img: Arc<RgbImage>,
+        mask: Mask,
+        lib: Arc<Vec<LibItem>>,
+    ) -> (Mask, Arc<RgbImage>);
 }
 
 pub struct ProcessWrapper(Box<dyn Process>);
@@ -130,64 +124,101 @@ impl ProcessWrapper {
             },
         });
 
+        let converter = Box::new(match color_space {
+            ColorSpace::RGB => converter::<SRBG>,
+            ColorSpace::HSV => converter::<HSV>,
+            ColorSpace::CIELAB => converter::<Lab>,
+        });
+
         Self(match calc_unit {
-            CalculationUnit::Average => match color_space {
-                ColorSpace::RGB => Box::new(AverageProc::<SRBG>::new(size, distance)),
-                ColorSpace::HSV => Box::new(AverageProc::<HSV>::new(size, distance)),
-                ColorSpace::CIELAB => Box::new(AverageProc::<Lab>::new(size, distance)),
-            },
-            CalculationUnit::Pixel => match color_space {
-                ColorSpace::RGB => Box::new(PixelProc::<SRBG>::new(size, distance)),
-                ColorSpace::HSV => Box::new(PixelProc::<HSV>::new(size, distance)),
-                ColorSpace::CIELAB => Box::new(PixelProc::<Lab>::new(size, distance)),
-            },
-            CalculationUnit::KMeans => match color_space {
-                ColorSpace::RGB => Box::new(KMeansProc::<SRBG>::new(size, distance, color_space)),
-                ColorSpace::HSV => Box::new(KMeansProc::<HSV>::new(size, distance, color_space)),
-                ColorSpace::CIELAB => Box::new(KMeansProc::<Lab>::new(size, distance, color_space)),
-            },
+            CalculationUnit::Average => Box::new(AverageProc::new(size, converter, distance)),
+            CalculationUnit::Pixel => Box::new(PixelProc::new(size, converter, distance)),
+            CalculationUnit::KMeans => Box::new(KMeansProc::new(size, distance, color_space)),
         })
     }
 
-    pub fn run(&self, target: &PathBuf, library: &[PathBuf]) -> Result<RgbImage> {
-        self.0.run(target, library)
+    #[inline(always)]
+    pub fn index(&self, libraries: &[PathBuf]) -> Tasks<Option<LibItem>> {
+        self.0.index(libraries)
+    }
+
+    #[inline(always)]
+    pub fn mask(&self, target: &PathBuf) -> Result<(Arc<RgbImage>, Vec<Mask>)> {
+        self.0.mask(target)
+    }
+
+    #[inline(always)]
+    pub fn fill(
+        &self,
+        img: Arc<RgbImage>,
+        lib: Arc<Vec<LibItem>>,
+        masks: &Vec<Mask>,
+    ) -> Tasks<(Mask, Arc<RgbImage>)> {
+        self.0.fill(img, lib, masks)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use {
+        async_std::task::block_on,
+        image::{ImageBuffer, RgbImage},
+        std::{fs::read_dir, path::PathBuf, sync::Arc},
+    };
+
     #[test]
     fn process() {
-        use std::{fs::read_dir, path::PathBuf};
-
-        super::ProcessWrapper::new(
+        let proc = super::ProcessWrapper::new(
             50,
             crate::CalculationUnit::Average,
             crate::ColorSpace::CIELAB,
             crate::DistanceAlgorithm::CIEDE2000,
-        )
-        .run(
-            &PathBuf::from("../static/images/testdata.jpg"),
-            &read_dir("../image_crawler/test")
-                .unwrap()
-                .filter_map(|res| {
-                    if let Ok(entry) = res.as_ref() {
-                        let path = entry.path();
-                        let ext = path
-                            .extension()
-                            .unwrap_or_default()
-                            .to_str()
-                            .unwrap_or_default();
-                        if path.is_file() && ["png", "jpg", "jpeg"].contains(&ext) {
-                            return Some(path);
-                        }
-                    };
+        );
+        let libraries = read_dir("../image_crawler/test")
+            .unwrap()
+            .filter_map(|res| match res.as_ref() {
+                Ok(entry) => {
+                    let path = entry.path();
+                    let ext = path
+                        .extension()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or_default();
+                    if path.is_file() && ["png", "jpg", "jpeg"].contains(&ext) {
+                        return Some(path);
+                    }
                     None
-                })
-                .collect::<Vec<_>>(),
-        )
-        .unwrap()
-        .save("test.png")
-        .unwrap();
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        block_on(async move {
+            let mut lib = Vec::with_capacity(libraries.len());
+            let tasks = proc.index(&libraries);
+            for task in tasks {
+                if let Some(i) = task.await {
+                    lib.push(i);
+                }
+            }
+            let lib = Arc::new(lib);
+
+            let (img, masks) = proc
+                .mask(&PathBuf::from("../static/images/testdata.jpg"))
+                .unwrap();
+            let (width, height) = img.dimensions();
+
+            let tasks = proc.fill(img, lib, &masks);
+            let mut img_buf: RgbImage = ImageBuffer::new(width, height);
+            for task in tasks {
+                let ((x, y, w, h), replace) = task.await;
+                for j in 0..h {
+                    for i in 0..w {
+                        let p = replace.get_pixel(i, j);
+                        img_buf.put_pixel(i + x, j + y, *p);
+                    }
+                }
+            }
+            img_buf.save("test.png").unwrap();
+        });
     }
 }
