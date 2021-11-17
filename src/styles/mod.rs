@@ -15,7 +15,7 @@ pub mod fonts {
 }
 
 pub mod spacings {
-    pub const _1: u16 = 4 * 0;
+    pub const _1: u16 = 4;
     pub const _2: u16 = 4 * 2;
     pub const _3: u16 = 4 * 3;
     pub const _4: u16 = 4 * 4;

@@ -14,7 +14,7 @@ use {
     states::{State, EN, IMAGE_FILTER, VIDEO_FILTER, ZH_CN},
     std::{
         fs::{create_dir, read_dir, remove_dir},
-        path::PathBuf,
+        path::{Path, PathBuf},
     },
     steps::{StepMessage, Steps, TargetType},
     streams::crawler,
@@ -194,7 +194,7 @@ impl<'a> Application for MosaicVideo<'a> {
 
                 StepMessage::Start => {
                     let len = state.libraries.values().fold(0, |s, i| s + i.len());
-                    let library =
+                    let _library =
                         state
                             .libraries
                             .values()
@@ -202,7 +202,7 @@ impl<'a> Application for MosaicVideo<'a> {
                                 vec.extend_from_slice(i);
                                 vec
                             });
-                    image_diff::ProcessWrapper::new(
+                    /*image_diff::ProcessWrapper::new(
                         50,
                         state.calc_unit,
                         state.color_space,
@@ -211,7 +211,7 @@ impl<'a> Application for MosaicVideo<'a> {
                     .run(&state.target_path, &library)
                     .unwrap()
                     .save("tmp.png")
-                    .unwrap();
+                    .unwrap();*/
                 }
             },
         }
@@ -322,7 +322,7 @@ impl<'a> Application for MosaicVideo<'a> {
 }
 
 impl MosaicVideo<'_> {
-    fn add_library(&mut self, path: &PathBuf) {
+    fn add_library(&mut self, path: &Path) {
         let Self { state, .. } = self;
         let entries = match read_dir(path) {
             Ok(entries) => entries,
@@ -350,7 +350,7 @@ impl MosaicVideo<'_> {
             })
             .collect::<Vec<_>>();
         if !entries.is_empty() {
-            state.libraries.insert(path.clone(), entries);
+            state.libraries.insert(path.to_path_buf(), entries);
         }
     }
 
