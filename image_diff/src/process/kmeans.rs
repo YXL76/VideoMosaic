@@ -1,5 +1,5 @@
 use {
-    super::{ColorSpace, Distance, LibItem, Mask, Process, ProcessStep},
+    super::{ColorSpace, Distance, LibItem, Mask, Process},
     crate::utils::{Color, RawColor, HSV, LAB, SRBG},
     image::{self, RgbImage},
     kmeans_colors::{get_kmeans, Kmeans},
@@ -7,9 +7,7 @@ use {
     std::sync::Arc,
 };
 
-pub(super) struct KMeansProc(Arc<Inner>);
-
-pub(super) struct Inner {
+pub(super) struct KMeansImpl {
     size: u32,
     converge: f32,
     max_iter: usize,
@@ -17,19 +15,12 @@ pub(super) struct Inner {
     k_means: Box<dyn Fn(usize, f32, &RgbImage, Mask) -> Vec<RawColor> + Sync + Send>,
 }
 
-impl Process for KMeansProc {
+impl Process for KMeansImpl {
     #[inline(always)]
     fn size(&self) -> u32 {
-        self.0.size
+        self.size
     }
 
-    #[inline(always)]
-    fn inner(&self) -> Arc<dyn ProcessStep + Sync + Send + 'static> {
-        self.0.clone()
-    }
-}
-
-impl ProcessStep for Inner {
     #[inline(always)]
     fn index_step(&self, img: RgbImage) -> LibItem {
         let Self {
@@ -74,7 +65,7 @@ impl ProcessStep for Inner {
     }
 }
 
-impl KMeansProc {
+impl KMeansImpl {
     const FACTOR_RGB: f32 = 0.0025;
     const FACTOR_LAB: f32 = 10.;
     const MAX_ITER_RGB: usize = 10;
@@ -97,13 +88,13 @@ impl KMeansProc {
             ColorSpace::CIELAB => k_means::<LAB>,
         });
 
-        Self(Arc::new(Inner {
+        Self {
             size,
             converge,
             max_iter,
             distance,
             k_means,
-        }))
+        }
     }
 }
 

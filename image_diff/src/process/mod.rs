@@ -8,11 +8,11 @@ use {
         CalculationUnit, ColorSpace, DistanceAlgorithm,
     },
     async_std::task::{spawn_blocking, JoinHandle},
-    average::AverageProc,
+    average::AverageImpl,
     image::{imageops::FilterType, RgbImage},
-    kmeans::KMeansProc,
+    kmeans::KMeansImpl,
     palette::{Lab, Pixel},
-    pixel::PixelProc,
+    pixel::PixelImpl,
     std::{collections::VecDeque, fmt, path::PathBuf, sync::Arc},
 };
 
@@ -26,49 +26,6 @@ type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
 trait Process {
     fn size(&self) -> u32;
 
-    fn inner(&self) -> Arc<dyn ProcessStep + Sync + Send + 'static>;
-
-    #[inline(always)]
-    fn index(&self, libraries: &[PathBuf]) -> Tasks<Option<LibItem>> {
-        libraries
-            .iter()
-            .map(|lib| {
-                let lib = lib.clone();
-                let size = self.size();
-                let inner = self.inner();
-                spawn_blocking(move || {
-                    if let Ok(img) = image::open(lib) {
-                        let img = img
-                            .resize_to_fill(size, size, FilterType::Nearest)
-                            .into_rgb8();
-                        return Some(inner.index_step(img));
-                    }
-                    None
-                })
-            })
-            .collect::<VecDeque<_>>()
-    }
-
-    #[inline(always)]
-    fn fill(
-        &self,
-        img: Arc<RgbImage>,
-        lib: Arc<Vec<LibItem>>,
-        masks: &Vec<Mask>,
-    ) -> Tasks<(Mask, Arc<RgbImage>)> {
-        masks
-            .iter()
-            .map(|&mask| {
-                let img = img.clone();
-                let lib = lib.clone();
-                let inner = self.inner();
-                spawn_blocking(move || inner.fill_step(img, mask, lib))
-            })
-            .collect::<VecDeque<_>>()
-    }
-}
-
-trait ProcessStep {
     fn index_step(&self, img: RgbImage) -> LibItem;
 
     fn fill_step(
@@ -79,9 +36,10 @@ trait ProcessStep {
     ) -> (Mask, Arc<RgbImage>);
 }
 
-pub struct ProcessWrapper(Box<dyn Process + Send>);
+pub struct ProcessWrapper(Arc<dyn Process + Sync + Send + 'static>);
 
 impl ProcessWrapper {
+    #[inline(always)]
     pub fn new(
         size: u32,
         calc_unit: CalculationUnit,
@@ -115,15 +73,35 @@ impl ProcessWrapper {
         });
 
         Self(match calc_unit {
-            CalculationUnit::Average => Box::new(AverageProc::new(size, converter, distance)),
-            CalculationUnit::Pixel => Box::new(PixelProc::new(size, converter, distance)),
-            CalculationUnit::KMeans => Box::new(KMeansProc::new(size, distance, color_space)),
+            CalculationUnit::Average => Arc::new(AverageImpl::new(size, converter, distance)),
+            CalculationUnit::Pixel => Arc::new(PixelImpl::new(size, converter, distance)),
+            CalculationUnit::KMeans => Arc::new(KMeansImpl::new(size, distance, color_space)),
         })
     }
 
     #[inline(always)]
-    pub fn index(&self, library: &[PathBuf]) -> Tasks<Option<LibItem>> {
-        self.0.index(library)
+    fn inner(&self) -> Arc<dyn Process + Sync + Send + 'static> {
+        self.0.clone()
+    }
+
+    #[inline(always)]
+    pub fn index(&self, libraries: &[PathBuf]) -> Tasks<Option<LibItem>> {
+        libraries
+            .iter()
+            .map(|lib| {
+                let lib = lib.clone();
+                let inner = self.inner();
+                spawn_blocking(move || {
+                    if let Ok(img) = image::open(lib) {
+                        let img = img
+                            .resize_to_fill(inner.size(), inner.size(), FilterType::Nearest)
+                            .into_rgb8();
+                        return Some(inner.index_step(img));
+                    }
+                    None
+                })
+            })
+            .collect::<VecDeque<_>>()
     }
 
     #[inline(always)]
@@ -133,7 +111,15 @@ impl ProcessWrapper {
         lib: Arc<Vec<LibItem>>,
         masks: &Vec<Mask>,
     ) -> Tasks<(Mask, Arc<RgbImage>)> {
-        self.0.fill(img, lib, masks)
+        masks
+            .iter()
+            .map(|&mask| {
+                let img = img.clone();
+                let lib = lib.clone();
+                let inner = self.inner();
+                spawn_blocking(move || inner.fill_step(img, mask, lib))
+            })
+            .collect::<VecDeque<_>>()
     }
 
     #[inline(always)]

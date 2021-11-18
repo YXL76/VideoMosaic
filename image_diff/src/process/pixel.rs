@@ -1,31 +1,22 @@
 use {
-    super::{Converter, Distance, LibItem, Mask, Process, ProcessStep},
+    super::{Converter, Distance, LibItem, Mask, Process},
     crate::utils::RawColor,
     image::{self, RgbImage},
     std::sync::Arc,
 };
 
-pub(super) struct PixelProc(Arc<Inner>);
-
-pub(super) struct Inner {
+pub(super) struct PixelImpl {
     size: u32,
     converter: Converter,
     distance: Distance,
 }
 
-impl Process for PixelProc {
+impl Process for PixelImpl {
     #[inline(always)]
     fn size(&self) -> u32 {
-        self.0.size
+        self.size
     }
 
-    #[inline(always)]
-    fn inner(&self) -> Arc<dyn ProcessStep + Sync + Send + 'static> {
-        self.0.clone()
-    }
-}
-
-impl ProcessStep for Inner {
     #[inline(always)]
     fn index_step(&self, img: RgbImage) -> LibItem {
         let Self {
@@ -60,17 +51,16 @@ impl ProcessStep for Inner {
     }
 }
 
-impl PixelProc {
+impl PixelImpl {
+    #[inline(always)]
     pub(super) fn new(size: u32, converter: Converter, distance: Distance) -> Self {
-        Self(Arc::new(Inner {
+        Self {
             size,
             converter,
             distance,
-        }))
+        }
     }
-}
 
-impl Inner {
     // #[inline(always)]
     fn compare(&self, img: &RgbImage, other: &Vec<RawColor>, (x, y, w, h): Mask) -> f32 {
         let Self {
