@@ -21,7 +21,7 @@ pub struct State {
     pub target_path: PathBuf,
 
     pub libraries: HashMap<PathBuf, Vec<PathBuf>>,
-    pub pending: Vec<String>,
+    pub pending: Vec<(String, String)>,
     pub crawler_id: usize,
     pub crawlers: HashMap<usize, crawler::Crawler>,
 
@@ -45,7 +45,7 @@ pub struct I18n {
     pub info: &'static str,
     pub error: &'static str,
     pub exit: &'static str,
-    pub exit_hint: &'static str,
+    pub exit_desc: &'static str,
 
     pub back: &'static str,
     pub next: &'static str,
@@ -58,6 +58,7 @@ pub struct I18n {
     pub from_the_web: &'static str,
     pub delete: &'static str,
     pub delete_desc: &'static str,
+    pub keyword_prompt: &'static str,
 
     pub choose_method: &'static str,
     pub calc_unit: &'static str,
@@ -87,7 +88,7 @@ pub const EN: I18n = I18n {
     info: "Info",
     error: "Error",
     exit: "Exit",
-    exit_hint: "Are you sure to exit?",
+    exit_desc: "Are you sure to exit?",
 
     back: "Back",
     next: "Next",
@@ -100,6 +101,7 @@ pub const EN: I18n = I18n {
     from_the_web: "From the Web",
     delete: "Delete",
     delete_desc: "Are you sure to delete?",
+    keyword_prompt: "Please enter keyword.",
 
     choose_method: "Choose Method",
     calc_unit: "Calculation Unit",
@@ -123,7 +125,7 @@ pub const ZH_CN: I18n = I18n {
     info: "信息",
     error: "错误",
     exit: "退出",
-    exit_hint: "你确定要退出吗？",
+    exit_desc: "你确定要退出吗？",
 
     back: "后退",
     next: "前进",
@@ -136,6 +138,7 @@ pub const ZH_CN: I18n = I18n {
     choose_library: "选择图片库",
     delete: "删除",
     delete_desc: "你确定要删除吗？",
+    keyword_prompt: "请输入关键词",
 
     choose_method: "选择方案",
     calc_unit: "计算单位",

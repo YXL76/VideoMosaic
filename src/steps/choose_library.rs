@@ -19,7 +19,7 @@ pub struct ChooseLibrary {
     local_btn: button::State,
     spider_btn: button::State,
     library_btn: [button::State; LIBRARY_BTN_CNT],
-    inputs: [text_input::State; LIBRARY_BTN_CNT],
+    inputs: [(text_input::State, text_input::State); LIBRARY_BTN_CNT],
     delete_btn: [button::State; LIBRARY_BTN_CNT],
 }
 
@@ -66,21 +66,37 @@ impl<'a> Step<'a> for ChooseLibrary {
             Scrollable::new(left_scroll)
                 .spacing(spacings::_4)
                 .style(state.theme),
-            |scroll, (idx, text, input, delete)| {
+            |scroll, (idx, (keyword, num), (i1, i2), delete)| {
                 let row = Row::new()
-                    .spacing(spacings::_1)
+                    .spacing(spacings::_2)
                     .push(
-                        TextInput::new(input, "", text.as_str(), move |s| {
-                            StepMessage::EditCrawler(idx, s)
+                        TextInput::new(i1, state.i18n.keyword_prompt, keyword.as_str(), move |s| {
+                            StepMessage::EditKeyword(idx, s)
                         })
                         .on_submit(StepMessage::StartCrawler(idx))
-                        .width(Length::Fill)
+                        .width(Length::FillPortion(3))
                         .style(state.theme)
-                        .size(spacings::_10),
+                        .padding(spacings::_1)
+                        .size(spacings::_8),
                     )
                     .push(
-                        rou_btn(delete, btn_icon("\u{f5e8}"), spacings::_10, &state.theme)
-                            .on_press(StepMessage::DeleteCrawler(idx)),
+                        TextInput::new(i2, "", num.as_str(), move |s| {
+                            StepMessage::EditNumber(idx, s)
+                        })
+                        .on_submit(StepMessage::StartCrawler(idx))
+                        .width(Length::FillPortion(1))
+                        .style(state.theme)
+                        .padding(spacings::_1)
+                        .size(spacings::_8),
+                    )
+                    .push(
+                        rou_btn(
+                            delete,
+                            btn_icon("\u{f5e8}"),
+                            spacings::_10,
+                            state.theme.danger_btn(),
+                        )
+                        .on_press(StepMessage::DeleteCrawler(idx)),
                     );
                 scroll.push(row)
             },

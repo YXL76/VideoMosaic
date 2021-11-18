@@ -38,6 +38,13 @@ impl Theme {
         }
     }
 
+    pub fn danger_btn(&self) -> Box<dyn button::StyleSheet> {
+        match self {
+            Self::Light => light::button::Danger.into(),
+            Self::Dark => dark::button::Danger.into(),
+        }
+    }
+
     pub fn inner_cont(&self) -> Box<dyn container::StyleSheet> {
         match self {
             Self::Light => light::container::Inner.into(),

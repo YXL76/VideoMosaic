@@ -40,14 +40,16 @@ impl<'a> Step<'a> for ProcessPreview {
     fn view(&mut self, state: &State) -> Element<StepMessage> {
         let Self { toggle, scroll } = self;
 
-        let btn = pri_btn(
+        let mut btn = pri_btn(
             toggle,
             btn_icon("\u{f40a} "),
             btn_text(state.i18n.start),
             spacings::_32,
             &state.theme,
-        )
-        .on_press(StepMessage::Start);
+        );
+        if state.process.is_some() {
+            btn = btn.on_press(StepMessage::Start);
+        }
 
         let progresses = state.percentage.iter().fold(
             Column::new().spacing(spacings::_6).width(Length::Fill),

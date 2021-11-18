@@ -146,13 +146,23 @@ impl<'a> Application for MosaicVideo<'a> {
 
                 StepMessage::AddCrawler => {
                     if !state.is_full() {
-                        state.pending.push(String::new())
+                        state.pending.push((String::new(), String::from("100")))
                     }
                 }
-                StepMessage::EditCrawler(idx, text) => state.pending[idx] = text,
+                StepMessage::EditKeyword(idx, text) => state.pending[idx].0 = text,
+                StepMessage::EditNumber(idx, text) => {
+                    if let Ok(num) = text.parse::<usize>() {
+                        state.pending[idx].1 = match num {
+                            0 => String::from("100"),
+                            i if i < 400 => text,
+                            _ => String::from("400"),
+                        }
+                    }
+                }
                 StepMessage::StartCrawler(idx) => {
-                    if !state.pending[idx].is_empty() {
-                        let keyword = state.pending.remove(idx);
+                    if !state.pending[idx].0.is_empty() {
+                        let (keyword, num) = state.pending.remove(idx);
+                        let num = num.parse::<usize>().unwrap();
                         let mut i = 0;
                         let folder = loop {
                             i += 1;
@@ -165,7 +175,7 @@ impl<'a> Application for MosaicVideo<'a> {
                         state.crawler_id += 1;
                         state.crawlers.insert(
                             state.crawler_id,
-                            crawler::Crawler::new(state.crawler_id, keyword, 100, folder),
+                            crawler::Crawler::new(state.crawler_id, keyword, num, folder),
                         );
                     }
                 }
@@ -283,23 +293,35 @@ impl<'a> Application for MosaicVideo<'a> {
             ..
         } = self;
 
-        let i18n_l = btn_text(state.i18n.symbol);
-        let theme_l = btn_icon(state.theme.symbol());
-        let close_l = btn_icon("\u{f156}");
         let header = Row::new()
             .spacing(spacings::_3)
             .push(Text::new(title).size(spacings::_12).width(Length::Fill))
             .push(
-                rou_btn(i18n_btn, i18n_l, spacings::_12, &state.theme)
-                    .on_press(Message::I18nPressed),
+                rou_btn(
+                    i18n_btn,
+                    btn_text(state.i18n.symbol),
+                    spacings::_12,
+                    state.theme.transparency_btn(),
+                )
+                .on_press(Message::I18nPressed),
             )
             .push(
-                rou_btn(theme_btn, theme_l, spacings::_12, &state.theme)
-                    .on_press(Message::ThemePressed),
+                rou_btn(
+                    theme_btn,
+                    btn_icon(state.theme.symbol()),
+                    spacings::_12,
+                    state.theme.transparency_btn(),
+                )
+                .on_press(Message::ThemePressed),
             )
             .push(
-                rou_btn(exit_btn, close_l, spacings::_12, &state.theme)
-                    .on_press(Message::ExitPressed),
+                rou_btn(
+                    exit_btn,
+                    btn_icon("\u{f156}"),
+                    spacings::_12,
+                    state.theme.transparency_btn(),
+                )
+                .on_press(Message::ExitPressed),
             );
 
         let back_i = btn_icon("\u{f141} ");
@@ -402,7 +424,7 @@ impl MosaicVideo<'_> {
         if MessageDialog::new()
             .set_level(MessageLevel::Warning)
             .set_title(self.state.i18n.exit)
-            .set_description(self.state.i18n.exit_hint)
+            .set_description(self.state.i18n.exit_desc)
             .set_buttons(MessageButtons::YesNo)
             .show()
         {

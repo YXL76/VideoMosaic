@@ -43,6 +43,7 @@ fn btn<'a, Message: 'a + Clone>(
     .style(style)
 }
 
+#[inline(always)]
 pub fn pri_btn<'a, Message: 'a + Clone>(
     state: &'a mut button::State,
     left: BtnText,
@@ -53,6 +54,7 @@ pub fn pri_btn<'a, Message: 'a + Clone>(
     btn(state, left, right, len, theme.primary_btn())
 }
 
+#[inline(always)]
 pub fn sec_btn<'a, Message: 'a + Clone>(
     state: &'a mut button::State,
     left: BtnText,
@@ -63,6 +65,18 @@ pub fn sec_btn<'a, Message: 'a + Clone>(
     btn(state, left, right, len, theme.secondary_btn())
 }
 
+/* #[inline(always)]
+pub fn dan_btn<'a, Message: 'a + Clone>(
+    state: &'a mut button::State,
+    left: BtnText,
+    right: BtnText,
+    len: u16,
+    theme: &Theme,
+) -> Button<'a, Message> {
+    btn(state, left, right, len, theme.danger_btn())
+} */
+
+#[inline(always)]
 pub fn tra_btn<'a, Message: 'a + Clone>(
     state: &'a mut button::State,
     left: BtnText,
@@ -73,14 +87,15 @@ pub fn tra_btn<'a, Message: 'a + Clone>(
     btn(state, left, right, len, theme.transparency_btn())
 }
 
+#[inline(always)]
 pub fn rou_btn<'a, Message: 'a + Clone>(
     state: &'a mut button::State,
     label: BtnText,
     len: u16,
-    theme: &Theme,
+    style: Box<dyn button::StyleSheet + 'a>,
 ) -> Button<'a, Message> {
     Button::new(state, label)
         .width(Length::Units(len))
         .height(Length::Units(len))
-        .style(theme.transparency_btn())
+        .style(style)
 }
