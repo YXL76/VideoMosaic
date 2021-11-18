@@ -13,6 +13,7 @@ repository = "https://github.com/YXL76/MosaicVideo"
 [dependencies]
 anyhow = "1.0"
 async-std = "1.10"
+image = "0.23"
 image_crawler = { path = "image_crawler" }
 image_diff = { path = "image_diff" }
 itertools = "0.10"

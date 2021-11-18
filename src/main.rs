@@ -10,14 +10,18 @@ use {
         Settings, Space, Subscription, Text,
     },
     iced_native::subscription,
+    image,
+    image_diff::ProcessWrapper,
     rfd::{AsyncMessageDialog, FileDialog, MessageButtons, MessageDialog, MessageLevel},
     states::{State, EN, IMAGE_FILTER, VIDEO_FILTER, ZH_CN},
     std::{
+        borrow::Cow,
+        ffi::OsStr,
         fs::{create_dir, read_dir, remove_dir},
         path::{Path, PathBuf},
     },
     steps::{StepMessage, Steps, TargetType},
-    streams::crawler,
+    streams::{crawler, process},
     styles::{spacings, Theme},
     widgets::{btn_icon, btn_text, pri_btn, rou_btn, sec_btn},
 };
@@ -180,7 +184,7 @@ impl<'a> Application for MosaicVideo<'a> {
                         }
                     }
                     crawler::Progress::Error(id, err) => {
-                        error_dialog(state, err);
+                        error_dialog(state.i18n.error, err.into());
                         if let Some(v) = state.crawlers.remove(&id) {
                             let _ = remove_dir(v.folder());
                         }
@@ -193,26 +197,66 @@ impl<'a> Application for MosaicVideo<'a> {
                 StepMessage::DistanceAlgorithm(item) => state.dist_algo = item,
 
                 StepMessage::Start => {
-                    let len = state.libraries.values().fold(0, |s, i| s + i.len());
-                    let _library =
-                        state
-                            .libraries
-                            .values()
-                            .fold(Vec::with_capacity(len), |mut vec, i| {
-                                vec.extend_from_slice(i);
-                                vec
-                            });
-                    /*image_diff::ProcessWrapper::new(
-                        50,
-                        state.calc_unit,
-                        state.color_space,
-                        state.dist_algo,
-                    )
-                    .run(&state.target_path, &library)
-                    .unwrap()
-                    .save("tmp.png")
-                    .unwrap();*/
+                    if let Ok(img) = image::open(&state.target_path) {
+                        let img = img.into_rgb8();
+                        let len = state.libraries.values().fold(0, |s, i| s + i.len());
+                        let library =
+                            state
+                                .libraries
+                                .values()
+                                .fold(Vec::with_capacity(len), |mut vec, i| {
+                                    vec.extend_from_slice(i);
+                                    vec
+                                });
+                        let masks = ProcessWrapper::mask(50, &img);
+                        for i in state.percentage.iter_mut() {
+                            *i = 0.;
+                        }
+                        state.step[0] = 100. / library.len() as f32;
+                        state.step[1] = 100. / masks.len() as f32;
+                        state.process = Some(process::Process::new(
+                            50,
+                            state.calc_unit,
+                            state.color_space,
+                            state.dist_algo,
+                            img,
+                            library,
+                            masks,
+                        ))
+                    }
                 }
+
+                StepMessage::ProcessMessage(ev) => match ev {
+                    process::Progress::Indexing => state.percentage[0] += state.step[0],
+                    process::Progress::Filling => {
+                        state.percentage[0] = 100.;
+                        state.percentage[1] += state.step[1]
+                    }
+                    process::Progress::Finished(img_buf) => {
+                        state.percentage[1] = 100.;
+                        state.process = None;
+                        let ext = OsStr::new("png");
+                        let mut path = state.target_path.clone();
+                        let mut base = state.target_path.file_stem().unwrap().to_os_string();
+                        base.push("-mosaic");
+                        path.set_file_name(&base);
+                        path.set_extension(ext);
+                        while path.exists() {
+                            base.push("_");
+                            path.set_file_name(&base);
+                            path.set_extension(ext);
+                        }
+                        match img_buf.save(&path) {
+                            Ok(_) => info_dialog(state.i18n.info, path.to_string_lossy()),
+                            Err(e) => error_dialog(state.i18n.error, e.to_string().into()),
+                        };
+                    }
+                    process::Progress::Error(err) => {
+                        error_dialog(state.i18n.error, err.into());
+                        state.process = None;
+                    }
+                    process::Progress::None => (),
+                },
             },
         }
 
@@ -327,7 +371,7 @@ impl MosaicVideo<'_> {
         let entries = match read_dir(path) {
             Ok(entries) => entries,
             Err(err) => {
-                error_dialog(state, err.to_string());
+                error_dialog(state.i18n.error, err.to_string().into());
                 return;
             }
         };
@@ -367,10 +411,18 @@ impl MosaicVideo<'_> {
     }
 }
 
-fn error_dialog(state: &State, text: String) {
+fn info_dialog(title: &'static str, text: Cow<'_, str>) {
+    async_dialog(title, MessageLevel::Info, text);
+}
+
+fn error_dialog(title: &'static str, text: Cow<'_, str>) {
+    async_dialog(title, MessageLevel::Error, text);
+}
+
+fn async_dialog(title: &'static str, level: MessageLevel, text: Cow<'_, str>) {
     let _ = AsyncMessageDialog::new()
-        .set_level(MessageLevel::Error)
-        .set_title(state.i18n.error)
-        .set_description(text.as_str())
+        .set_level(level)
+        .set_title(title)
+        .set_description(&text.into_owned())
         .show();
 }

@@ -1,16 +1,19 @@
 mod choose_library;
 mod choose_method;
 mod choose_target;
-mod process;
+mod process_preview;
 
 use {
-    crate::{states::State, streams::crawler},
+    crate::{
+        states::State,
+        streams::{crawler, process},
+    },
     choose_library::ChooseLibrary,
     choose_method::ChooseMethod,
     choose_target::ChooseTarget,
     iced::{Element, Subscription},
     image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
-    process::Process,
+    process_preview::ProcessPreview,
     std::path::PathBuf,
 };
 
@@ -30,6 +33,7 @@ pub enum StepMessage {
     ColorSpace(ColorSpace),
     DistanceAlgorithm(DistanceAlgorithm),
     Start,
+    ProcessMessage(process::Progress),
 }
 
 trait Step<'a> {
@@ -66,7 +70,7 @@ impl Steps<'_> {
                 Box::new(ChooseTarget::default()),
                 Box::new(ChooseLibrary::default()),
                 Box::new(ChooseMethod::default()),
-                Box::new(Process::default()),
+                Box::new(ProcessPreview::default()),
             ],
         }
     }

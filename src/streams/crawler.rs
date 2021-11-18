@@ -9,6 +9,7 @@ use {
     iced_native::subscription,
     image_crawler::{download_urls, gen_client, get_urls, HttpClient},
     std::{
+        any::TypeId,
         collections::VecDeque,
         hash::{Hash, Hasher},
         path::PathBuf,
@@ -21,7 +22,8 @@ pub struct Crawler {
     id: usize,
     keyword: String,
     num: usize,
-    cnt: usize,
+    step: f32,
+    percentage: f32,
     folder: PathBuf,
 }
 
@@ -32,7 +34,8 @@ impl Crawler {
             id,
             keyword,
             num,
-            cnt: 0,
+            step: 100. / num as f32,
+            percentage: 0.,
             folder,
         }
     }
@@ -44,12 +47,12 @@ impl Crawler {
 
     #[inline(always)]
     pub fn add(&mut self) {
-        self.cnt += 100;
+        self.percentage += self.step;
     }
 
     #[inline(always)]
     pub fn percentage(&self) -> f32 {
-        self.cnt as f32 / self.num as f32
+        self.percentage
     }
 
     #[inline(always)]
@@ -65,8 +68,7 @@ where
     type Output = Progress;
 
     fn hash(&self, state: &mut H) {
-        std::any::TypeId::of::<Self>().hash(state);
-
+        TypeId::of::<Self>().hash(state);
         self.id.hash(state);
     }
 
@@ -91,6 +93,7 @@ where
                             Err(e) => (Progress::Error(id, e.to_string()), State::Finished),
                         })
                     }
+
                     State::Getting(client, mut tasks, mut urls, folder) => {
                         Some(match tasks.pop_front() {
                             Some(task) => {
@@ -106,6 +109,7 @@ where
                             }
                         })
                     }
+
                     State::Downloading(mut tasks, mut flag) => Some(match tasks.pop_front() {
                         Some(task) => {
                             if let Ok(true) = task.await {
@@ -117,11 +121,12 @@ where
                             if flag {
                                 Progress::Finished(id)
                             } else {
-                                Progress::Error(id, String::from("No images were downloaded"))
+                                Progress::Error(id, String::from("No images were downloaded."))
                             },
                             State::Finished,
                         ),
                     }),
+
                     State::Finished => None,
                 }
             },

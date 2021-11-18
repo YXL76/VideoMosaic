@@ -1,5 +1,9 @@
 use {
-    crate::{steps::TargetType, streams::crawler, styles::Theme},
+    crate::{
+        steps::TargetType,
+        streams::{crawler, process},
+        styles::Theme,
+    },
     image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
     std::{collections::HashMap, path::PathBuf},
 };
@@ -24,6 +28,9 @@ pub struct State {
     pub calc_unit: CalculationUnit,
     pub color_space: ColorSpace,
     pub dist_algo: DistanceAlgorithm,
+    pub step: [f32; 3],
+    pub percentage: [f32; 3],
+    pub process: Option<process::Process>,
 }
 
 impl State {
@@ -35,6 +42,7 @@ impl State {
 
 pub struct I18n {
     pub symbol: &'static str,
+    pub info: &'static str,
     pub error: &'static str,
     pub exit: &'static str,
     pub exit_hint: &'static str,
@@ -76,6 +84,7 @@ impl Default for &I18n {
 
 pub const EN: I18n = I18n {
     symbol: "En",
+    info: "Info",
     error: "Error",
     exit: "Exit",
     exit_hint: "Are you sure to exit?",
@@ -111,6 +120,7 @@ pub const EN: I18n = I18n {
 
 pub const ZH_CN: I18n = I18n {
     symbol: "中",
+    info: "信息",
     error: "错误",
     exit: "退出",
     exit_hint: "你确定要退出吗？",

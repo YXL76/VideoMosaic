@@ -1957,6 +1957,7 @@ dependencies = [
  "async-std",
  "iced",
  "iced_native",
+ "image",
  "image_crawler",
  "image_diff",
  "itertools",

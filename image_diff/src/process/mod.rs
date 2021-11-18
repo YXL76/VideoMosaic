@@ -7,19 +7,19 @@ use {
         utils::{ciede2000, converter, RawColor, HSV, SRBG},
         CalculationUnit, ColorSpace, DistanceAlgorithm,
     },
-    anyhow::Result,
     async_std::task::{spawn_blocking, JoinHandle},
     average::AverageProc,
     image::{imageops::FilterType, RgbImage},
     kmeans::KMeansProc,
     palette::{Lab, Pixel},
     pixel::PixelProc,
-    std::{path::PathBuf, sync::Arc},
+    std::{collections::VecDeque, fmt, path::PathBuf, sync::Arc},
 };
 
-type Mask = (u32, u32, u32, u32);
-type Tasks<T> = Vec<JoinHandle<T>>;
-type LibItem = (Vec<RawColor>, Arc<RgbImage>);
+pub type Mask = (u32, u32, u32, u32);
+pub type Tasks<T> = VecDeque<JoinHandle<T>>;
+pub type LibItem = (Vec<RawColor>, Arc<RgbImage>);
+
 type Converter = Box<dyn Fn(&[u8; 3]) -> RawColor + Sync + Send>;
 type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
 
@@ -46,23 +46,7 @@ trait Process {
                     None
                 })
             })
-            .collect::<Vec<_>>()
-    }
-
-    #[inline(always)]
-    fn mask(&self, target: &PathBuf) -> Result<(Arc<RgbImage>, Vec<Mask>)> {
-        let img = image::open(target)?.into_rgb8();
-        let (width, height) = img.dimensions();
-        let size = self.size();
-        let mut mask = Vec::with_capacity((((width / size) + 1) * ((height / size) + 1)) as usize);
-        for y in (0..height).step_by(size as usize) {
-            for x in (0..width).step_by(size as usize) {
-                let w = size.min(width - x);
-                let h = size.min(height - y);
-                mask.push((x, y, w, h));
-            }
-        }
-        Ok((Arc::new(img), mask))
+            .collect::<VecDeque<_>>()
     }
 
     #[inline(always)]
@@ -80,7 +64,7 @@ trait Process {
                 let inner = self.inner();
                 spawn_blocking(move || inner.fill_step(img, mask, lib))
             })
-            .collect::<Vec<_>>()
+            .collect::<VecDeque<_>>()
     }
 }
 
@@ -95,7 +79,7 @@ trait ProcessStep {
     ) -> (Mask, Arc<RgbImage>);
 }
 
-pub struct ProcessWrapper(Box<dyn Process>);
+pub struct ProcessWrapper(Box<dyn Process + Send>);
 
 impl ProcessWrapper {
     pub fn new(
@@ -138,13 +122,8 @@ impl ProcessWrapper {
     }
 
     #[inline(always)]
-    pub fn index(&self, libraries: &[PathBuf]) -> Tasks<Option<LibItem>> {
-        self.0.index(libraries)
-    }
-
-    #[inline(always)]
-    pub fn mask(&self, target: &PathBuf) -> Result<(Arc<RgbImage>, Vec<Mask>)> {
-        self.0.mask(target)
+    pub fn index(&self, library: &[PathBuf]) -> Tasks<Option<LibItem>> {
+        self.0.index(library)
     }
 
     #[inline(always)]
@@ -156,25 +135,46 @@ impl ProcessWrapper {
     ) -> Tasks<(Mask, Arc<RgbImage>)> {
         self.0.fill(img, lib, masks)
     }
+
+    #[inline(always)]
+    pub fn mask(size: u32, img: &RgbImage) -> Vec<Mask> {
+        let (width, height) = img.dimensions();
+        let mut mask = Vec::with_capacity((((width / size) + 1) * ((height / size) + 1)) as usize);
+        for y in (0..height).step_by(size as usize) {
+            for x in (0..width).step_by(size as usize) {
+                let w = size.min(width - x);
+                let h = size.min(height - y);
+                mask.push((x, y, w, h));
+            }
+        }
+        mask
+    }
+}
+
+impl fmt::Debug for ProcessWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("").field(&"Process").finish()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use {
         async_std::task::block_on,
-        image::{ImageBuffer, RgbImage},
+        image::{self, ImageBuffer, RgbImage},
         std::{fs::read_dir, path::PathBuf, sync::Arc},
     };
 
     #[test]
     fn process() {
+        let size = 50;
         let proc = super::ProcessWrapper::new(
-            50,
+            size,
             crate::CalculationUnit::Average,
             crate::ColorSpace::CIELAB,
             crate::DistanceAlgorithm::CIEDE2000,
         );
-        let libraries = read_dir("../image_crawler/test")
+        let library = read_dir("../image_crawler/test")
             .unwrap()
             .filter_map(|res| match res.as_ref() {
                 Ok(entry) => {
@@ -193,8 +193,8 @@ mod tests {
             })
             .collect::<Vec<_>>();
         block_on(async move {
-            let mut lib = Vec::with_capacity(libraries.len());
-            let tasks = proc.index(&libraries);
+            let mut lib = Vec::with_capacity(library.len());
+            let tasks = proc.index(&library);
             for task in tasks {
                 if let Some(i) = task.await {
                     lib.push(i);
@@ -202,9 +202,12 @@ mod tests {
             }
             let lib = Arc::new(lib);
 
-            let (img, masks) = proc
-                .mask(&PathBuf::from("../static/images/testdata.jpg"))
-                .unwrap();
+            let img = Arc::new(
+                image::open(PathBuf::from("../static/images/testdata.jpg"))
+                    .unwrap()
+                    .into_rgb8(),
+            );
+            let masks = super::ProcessWrapper::mask(size, &img);
             let (width, height) = img.dimensions();
 
             let tasks = proc.fill(img, lib, &masks);
