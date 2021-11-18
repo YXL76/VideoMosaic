@@ -1,4 +1,4 @@
-use {super::super::colors, iced::container};
+use {crate::styles::colors, iced::container};
 
 pub struct Inner;
 

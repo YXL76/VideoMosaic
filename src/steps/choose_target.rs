@@ -82,6 +82,7 @@ impl<'a> Step<'a> for ChooseTarget {
                     .push(right_side),
             )
             .height(Length::Fill)
+            .style(state.theme)
             .into()
     }
 }

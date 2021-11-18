@@ -63,7 +63,9 @@ impl<'a> Step<'a> for ChooseLibrary {
             delete_btn.iter_mut()
         ]
         .fold(
-            Scrollable::new(left_scroll).spacing(spacings::_4),
+            Scrollable::new(left_scroll)
+                .spacing(spacings::_4)
+                .style(state.theme),
             |scroll, (idx, text, input, delete)| {
                 let row = Row::new()
                     .spacing(spacings::_1)
@@ -73,6 +75,7 @@ impl<'a> Step<'a> for ChooseLibrary {
                         })
                         .on_submit(StepMessage::StartCrawler(idx))
                         .width(Length::Fill)
+                        .style(state.theme)
                         .size(spacings::_10),
                     )
                     .push(
@@ -86,7 +89,8 @@ impl<'a> Step<'a> for ChooseLibrary {
         let left_side = state.crawlers.values().fold(left_side, |scroll, crawler| {
             scroll.push(
                 ProgressBar::new(1.0..=100.0, crawler.percentage())
-                    .height(Length::Units(spacings::_10)),
+                    .height(Length::Units(spacings::_10))
+                    .style(state.theme),
             )
         });
 
@@ -106,7 +110,8 @@ impl<'a> Step<'a> for ChooseLibrary {
         let right_side = state.libraries.values().fold(
             Scrollable::new(right_scroll)
                 .width(Length::Fill)
-                .padding(spacings::_6),
+                .padding(spacings::_6)
+                .style(state.theme),
             |scroll, files| {
                 files.iter().fold(scroll, |scroll, file| {
                     count += 1;

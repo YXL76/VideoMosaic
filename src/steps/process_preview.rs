@@ -6,7 +6,9 @@ use {
         styles::spacings,
         widgets::{btn_icon, btn_text, pri_btn},
     },
-    iced::{button, scrollable, Alignment, Column, Element, Length, ProgressBar, Row, Scrollable},
+    iced::{
+        button, scrollable, Alignment, Column, Element, Length, ProgressBar, Row, Rule, Scrollable,
+    },
 };
 
 #[derive(Default)]
@@ -49,7 +51,7 @@ impl<'a> Step<'a> for ProcessPreview {
 
         let progresses = state.percentage.iter().fold(
             Column::new().spacing(spacings::_6).width(Length::Fill),
-            |col, &perc| col.push(ProgressBar::new(0.0..=100.0, perc)),
+            |col, &perc| col.push(ProgressBar::new(0.0..=100.0, perc).style(state.theme)),
         );
 
         Scrollable::new(scroll)
@@ -60,7 +62,9 @@ impl<'a> Step<'a> for ProcessPreview {
                     .push(btn)
                     .push(progresses),
             )
+            .push(Rule::horizontal(spacings::_4).style(state.theme))
             .height(Length::Fill)
+            .style(state.theme)
             .into()
     }
 }

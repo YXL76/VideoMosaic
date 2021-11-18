@@ -1,6 +1,6 @@
 use {
     super::{dark, light},
-    iced::{button, container},
+    iced::{button, container, progress_bar, radio, rule, scrollable, slider, text_input},
 };
 
 #[derive(Copy, Clone)]
@@ -57,6 +57,60 @@ impl<'a> From<Theme> for Box<dyn container::StyleSheet + 'a> {
         match theme {
             Theme::Light => Default::default(),
             Theme::Dark => dark::container::Outer.into(),
+        }
+    }
+}
+
+impl From<Theme> for Box<dyn progress_bar::StyleSheet> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => light::ProgressBar.into(),
+            Theme::Dark => dark::ProgressBar.into(),
+        }
+    }
+}
+
+impl<'a> From<Theme> for Box<dyn radio::StyleSheet + 'a> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => light::Radio.into(),
+            Theme::Dark => dark::Radio.into(),
+        }
+    }
+}
+
+impl From<Theme> for Box<dyn rule::StyleSheet> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => light::Rule.into(),
+            Theme::Dark => dark::Rule.into(),
+        }
+    }
+}
+
+impl<'a> From<Theme> for Box<dyn scrollable::StyleSheet + 'a> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => light::Scrollable.into(),
+            Theme::Dark => dark::Scrollable.into(),
+        }
+    }
+}
+
+impl<'a> From<Theme> for Box<dyn slider::StyleSheet + 'a> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => light::Slider.into(),
+            Theme::Dark => dark::Slider.into(),
+        }
+    }
+}
+
+impl<'a> From<Theme> for Box<dyn text_input::StyleSheet + 'a> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => light::TextInput.into(),
+            Theme::Dark => dark::TextInput.into(),
         }
     }
 }

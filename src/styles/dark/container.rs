@@ -1,5 +1,5 @@
 use {
-    super::super::colors,
+    crate::styles::colors,
     iced::{container, Color},
 };
 

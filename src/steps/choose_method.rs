@@ -29,12 +29,15 @@ impl<'a> Step<'a> for ChooseMethod {
                 .spacing(spacings::_8)
                 .push(Text::new(state.i18n.calc_unit).size(spacings::_8)),
             |col, &item| {
-                col.push(Radio::new(
-                    item,
-                    calc_unit_label(&item, state),
-                    Some(state.calc_unit),
-                    StepMessage::CalculationUnit,
-                ))
+                col.push(
+                    Radio::new(
+                        item,
+                        calc_unit_label(&item, state),
+                        Some(state.calc_unit),
+                        StepMessage::CalculationUnit,
+                    )
+                    .style(state.theme),
+                )
             },
         );
 
@@ -45,12 +48,15 @@ impl<'a> Step<'a> for ChooseMethod {
                     .spacing(spacings::_8)
                     .push(Text::new(state.i18n.color_space).size(spacings::_8)),
                 |col, &item| {
-                    col.push(Radio::new(
-                        item,
-                        color_space_label(&item, state),
-                        Some(state.color_space),
-                        StepMessage::ColorSpace,
-                    ))
+                    col.push(
+                        Radio::new(
+                            item,
+                            color_space_label(&item, state),
+                            Some(state.color_space),
+                            StepMessage::ColorSpace,
+                        )
+                        .style(state.theme),
+                    )
                 },
             );
 
@@ -61,12 +67,15 @@ impl<'a> Step<'a> for ChooseMethod {
                     .spacing(spacings::_8)
                     .push(Text::new(state.i18n.dist_algo).size(spacings::_8)),
                 |col, &item| {
-                    col.push(Radio::new(
-                        item,
-                        dist_algo_label(&item, state),
-                        Some(state.dist_algo),
-                        StepMessage::DistanceAlgorithm,
-                    ))
+                    col.push(
+                        Radio::new(
+                            item,
+                            dist_algo_label(&item, state),
+                            Some(state.dist_algo),
+                            StepMessage::DistanceAlgorithm,
+                        )
+                        .style(state.theme),
+                    )
                 },
             );
 
@@ -79,6 +88,7 @@ impl<'a> Step<'a> for ChooseMethod {
                     .push(dist_algo.width(Length::FillPortion(1))),
             )
             .height(Length::Fill)
+            .style(state.theme)
             .into()
     }
 }

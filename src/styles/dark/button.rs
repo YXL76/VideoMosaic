@@ -1,5 +1,5 @@
 use {
-    super::super::{colors, spacings},
+    crate::styles::{colors, spacings},
     iced::{button, Color, Vector},
 };
 
