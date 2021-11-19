@@ -1,3 +1,5 @@
+mod transcoder;
+
 use {
     kmeans_colors::{Calculate, Hamerly, Sort},
     palette::{
@@ -5,6 +7,8 @@ use {
         IntoColor, Lab, Pixel, Srgb,
     },
 };
+
+pub(crate) use transcoder::Transcoder;
 
 pub(crate) type SRBG = Srgb<f32>;
 pub(crate) type HSV = Hsv<encoding::Srgb, f32>;
