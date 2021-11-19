@@ -10,7 +10,6 @@ use {
         Settings, Space, Subscription, Text,
     },
     iced_native::subscription,
-    image,
     image_diff::ProcessWrapper,
     rfd::{AsyncMessageDialog, FileDialog, MessageButtons, MessageDialog, MessageLevel},
     states::{State, EN, IMAGE_FILTER, VIDEO_FILTER, ZH_CN},
@@ -222,7 +221,7 @@ impl<'a> Application for MosaicVideo<'a> {
                                     vec.extend_from_slice(i);
                                     vec
                                 });
-                        let masks = ProcessWrapper::mask(50, &img);
+                        let masks = ProcessWrapper::mask(state.size as u32, &img);
                         for i in state.percentage.iter_mut() {
                             *i = 0.;
                         }
