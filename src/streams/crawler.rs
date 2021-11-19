@@ -10,10 +10,10 @@ use {
     image_crawler::{download_urls, gen_client, get_urls, HttpClient},
     std::{
         any::TypeId,
-        collections::VecDeque,
         hash::{Hash, Hasher},
         path::PathBuf,
         sync::Arc,
+        vec::IntoIter,
     },
 };
 
@@ -87,6 +87,7 @@ where
                     State::Ready(client, keyword, num, folder) => {
                         Some(match get_urls(client.clone(), keyword, num).await {
                             Ok((num, tasks)) => {
+                                let tasks = tasks.into_iter();
                                 let urls = Vec::with_capacity(num);
                                 (Progress::None, State::Getting(client, tasks, urls, folder))
                             }
@@ -95,7 +96,7 @@ where
                     }
 
                     State::Getting(client, mut tasks, mut urls, folder) => {
-                        Some(match tasks.pop_front() {
+                        Some(match tasks.next() {
                             Some(task) => {
                                 if let Ok(ret) = task.await {
                                     urls.extend_from_slice(&ret);
@@ -104,13 +105,14 @@ where
                             }
                             None => {
                                 let tasks =
-                                    download_urls(client, urls, &IMAGE_FILTER, folder.clone());
+                                    download_urls(client, urls, &IMAGE_FILTER, folder.clone())
+                                        .into_iter();
                                 (Progress::None, State::Downloading(tasks, false))
                             }
                         })
                     }
 
-                    State::Downloading(mut tasks, mut flag) => Some(match tasks.pop_front() {
+                    State::Downloading(mut tasks, mut flag) => Some(match tasks.next() {
                         Some(task) => {
                             if let Ok(true) = task.await {
                                 flag = true;
@@ -147,10 +149,10 @@ enum State {
     Ready(Arc<HttpClient>, String, usize, PathBuf),
     Getting(
         Arc<HttpClient>,
-        VecDeque<JoinHandle<Result<Vec<String>>>>,
+        IntoIter<JoinHandle<Result<Vec<String>>>>,
         Vec<String>,
         PathBuf,
     ),
-    Downloading(VecDeque<JoinHandle<Result<bool>>>, bool),
+    Downloading(IntoIter<JoinHandle<Result<bool>>>, bool),
     Finished,
 }

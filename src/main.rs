@@ -18,6 +18,7 @@ use {
         ffi::OsStr,
         fs::{create_dir, read_dir, remove_dir},
         path::{Path, PathBuf},
+        sync::Arc,
     },
     steps::{StepMessage, Steps, TargetType},
     streams::{crawler, process},
@@ -201,44 +202,33 @@ impl<'a> Application for MosaicVideo<'a> {
                     crawler::Progress::None => (),
                 },
 
-                StepMessage::CalculationUnit(item) => state.calc_unit = item,
-                StepMessage::ColorSpace(item) => state.color_space = item,
-                StepMessage::DistanceAlgorithm(item) => state.dist_algo = item,
-                StepMessage::Filter(item) => state.filter = item,
-                StepMessage::K(item) => state.k = item,
-                StepMessage::Hamerly(item) => state.hamerly = item,
-                StepMessage::Size(item) => state.size = item,
+                StepMessage::CalculationUnit(item) => state.config.calc_unit = item,
+                StepMessage::ColorSpace(item) => state.config.color_space = item,
+                StepMessage::DistanceAlgorithm(item) => state.config.dist_algo = item,
+                StepMessage::Filter(item) => state.config.filter = item,
+                StepMessage::K(item) => state.config.k = item,
+                StepMessage::Hamerly(item) => state.config.hamerly = item,
+                StepMessage::Size(item) => state.config.size = item,
 
                 StepMessage::Start => {
                     if let Ok(img) = image::open(&state.target_path) {
-                        let img = img.into_rgb8();
+                        let img = Arc::new(img.into_rgb8());
                         let len = state.libraries.values().fold(0, |s, i| s + i.len());
-                        let library =
-                            state
-                                .libraries
-                                .values()
-                                .fold(Vec::with_capacity(len), |mut vec, i| {
-                                    vec.extend_from_slice(i);
-                                    vec
-                                });
-                        let masks = ProcessWrapper::mask(state.size as u32, &img);
+                        let library = Arc::new(state.libraries.values().fold(
+                            Vec::with_capacity(len),
+                            |mut vec, i| {
+                                vec.extend_from_slice(i);
+                                vec
+                            },
+                        ));
+                        let masks = Arc::new(ProcessWrapper::mask(state.config.size as u32, &img));
                         for i in state.percentage.iter_mut() {
                             *i = 0.;
                         }
                         state.step[0] = 100. / library.len() as f32;
                         state.step[1] = 100. / masks.len() as f32;
-                        state.process = Some(process::Process::new(
-                            state.size as u32,
-                            state.k as usize,
-                            state.hamerly,
-                            state.calc_unit,
-                            state.color_space,
-                            state.dist_algo,
-                            state.filter,
-                            img,
-                            library,
-                            masks,
-                        ))
+                        state.process =
+                            Some(process::Process::new(state.config, img, library, masks))
                     }
                 }
 

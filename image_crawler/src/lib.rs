@@ -10,7 +10,7 @@ use {
     isahc::{config::VersionNegotiation, prelude::*, Request},
     mime::Mime,
     serde::Deserialize,
-    std::{borrow::Cow, collections::VecDeque, path::PathBuf, sync::Arc, time::Duration},
+    std::{borrow::Cow, path::PathBuf, sync::Arc, time::Duration},
     urlencoding::encode,
 };
 
@@ -64,7 +64,7 @@ pub fn download_urls(
     urls: Vec<String>,
     filter: &'static [&str],
     folder: PathBuf,
-) -> VecDeque<JoinHandle<Result<bool>>> {
+) -> Vec<JoinHandle<Result<bool>>> {
     urls.into_iter()
         .enumerate()
         .map(|(idx, url)| {
@@ -72,7 +72,7 @@ pub fn download_urls(
             let client = client.clone();
             spawn(download_url(client, url, filter, folder.clone(), idx))
         })
-        .collect::<VecDeque<_>>()
+        .collect::<Vec<_>>()
 }
 
 async fn download_url(
@@ -111,7 +111,7 @@ pub async fn get_urls(
     client: Arc<HttpClient>,
     keyword: String,
     num: usize,
-) -> Result<(usize, VecDeque<JoinHandle<Result<Vec<String>>>>)> {
+) -> Result<(usize, Vec<JoinHandle<Result<Vec<String>>>>)> {
     let keyword = encode(&keyword).to_string();
     let mut params = BASE_PARAMS.clone();
     params[0].1 = keyword.clone().into();
@@ -128,7 +128,7 @@ pub async fn get_urls(
             let client = client.clone();
             spawn(get_part_urls(client, start.to_string(), params.clone()))
         })
-        .collect::<VecDeque<_>>();
+        .collect::<Vec<_>>();
 
     Ok((num, tasks))
 }

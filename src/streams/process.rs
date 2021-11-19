@@ -1,58 +1,39 @@
 use {
-    crate::states::Filter,
+    async_std::task::JoinHandle,
     iced::{
         futures::stream::{unfold, BoxStream},
         Subscription,
     },
     iced_native::subscription,
     image::{ImageBuffer, RgbImage},
-    image_diff::{
-        CalculationUnit, ColorSpace, DistanceAlgorithm, LibItem, Mask, ProcessWrapper, Tasks,
-    },
+    image_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper},
     std::{
         any::TypeId,
         hash::{Hash, Hasher},
         path::PathBuf,
         sync::Arc,
+        vec::IntoIter,
     },
 };
 
 #[derive(Debug, Clone)]
 pub struct Process {
-    size: u32,
-    k: usize,
-    hamerly: bool,
-    calc_unit: CalculationUnit,
-    color_space: ColorSpace,
-    dist_algo: DistanceAlgorithm,
-    filter: Filter,
-    img: RgbImage,
-    library: Vec<PathBuf>,
-    masks: Vec<Mask>,
+    config: ProcessConfig,
+    img: Arc<RgbImage>,
+    library: Arc<Vec<PathBuf>>,
+    masks: Arc<Vec<Mask>>,
 }
 
 impl Process {
     #[inline(always)]
     pub fn new(
-        size: u32,
-        k: usize,
-        hamerly: bool,
-        calc_unit: CalculationUnit,
-        color_space: ColorSpace,
-        dist_algo: DistanceAlgorithm,
-        filter: Filter,
-        img: RgbImage,
-        library: Vec<PathBuf>,
-        masks: Vec<Mask>,
+        config: ProcessConfig,
+        img: Arc<RgbImage>,
+        library: Arc<Vec<PathBuf>>,
+        masks: Arc<Vec<Mask>>,
     ) -> Self {
         Self {
-            size,
-            k,
-            hamerly,
-            calc_unit,
-            color_space,
-            dist_algo,
-            filter,
+            config,
             img,
             library,
             masks,
@@ -80,26 +61,24 @@ where
         Box::pin(unfold(State::Ready(self), move |state| async move {
             match state {
                 State::Ready(s) => Some({
-                    let proc = ProcessWrapper::new(
-                        s.size,
-                        s.k,
-                        s.hamerly,
-                        s.calc_unit,
-                        s.color_space,
-                        s.dist_algo,
-                        s.filter.into(),
-                    );
+                    let proc = ProcessWrapper::new(s.config);
                     let lib = Vec::with_capacity(s.library.len());
-                    let tasks = proc.index(&s.library);
-                    (Progress::None, State::Indexing(s, proc, tasks, lib))
+                    let tasks = proc.index(&s.library).into_iter();
+                    (
+                        Progress::None,
+                        State::Indexing(s.img, s.masks, proc, tasks, lib),
+                    )
                 }),
 
-                State::Indexing(s, proc, mut tasks, mut lib) => Some(match tasks.pop_front() {
+                State::Indexing(img, masks, proc, mut tasks, mut lib) => Some(match tasks.next() {
                     Some(task) => {
                         if let Some(i) = task.await {
                             lib.push(i);
                         }
-                        (Progress::Indexing, State::Indexing(s, proc, tasks, lib))
+                        (
+                            Progress::Indexing,
+                            State::Indexing(img, masks, proc, tasks, lib),
+                        )
                     }
                     None => match lib.is_empty() {
                         true => (
@@ -107,15 +86,15 @@ where
                             State::Finished,
                         ),
                         false => {
-                            let (width, height) = s.img.dimensions();
+                            let (width, height) = img.dimensions();
                             let img_buf: RgbImage = ImageBuffer::new(width, height);
-                            let tasks = proc.fill(Arc::new(s.img), Arc::new(lib), &s.masks);
+                            let tasks = proc.fill(img, Arc::new(lib), &masks).into_iter();
                             (Progress::None, State::Filling(proc, tasks, img_buf))
                         }
                     },
                 }),
 
-                State::Filling(proc, mut tasks, mut img_buf) => Some(match tasks.pop_front() {
+                State::Filling(proc, mut tasks, mut img_buf) => Some(match tasks.next() {
                     Some(task) => {
                         let ((x, y, w, h), replace) = task.await;
                         for j in 0..h {
@@ -147,11 +126,16 @@ pub enum Progress {
 enum State {
     Ready(Box<Process>),
     Indexing(
-        Box<Process>,
+        Arc<RgbImage>,
+        Arc<Vec<Mask>>,
         ProcessWrapper,
-        Tasks<Option<LibItem>>,
+        IntoIter<JoinHandle<Option<LibItem>>>,
         Vec<LibItem>,
     ),
-    Filling(ProcessWrapper, Tasks<(Mask, Arc<RgbImage>)>, RgbImage),
+    Filling(
+        ProcessWrapper,
+        IntoIter<JoinHandle<(Mask, Arc<RgbImage>)>>,
+        RgbImage,
+    ),
     Finished,
 }

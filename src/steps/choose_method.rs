@@ -1,13 +1,10 @@
 use {
     super::{Step, StepMessage},
-    crate::{
-        states::{Filter, State},
-        styles::spacings,
-    },
+    crate::{states::State, styles::spacings},
     iced::{
         scrollable, slider, Column, Element, Length, Radio, Row, Scrollable, Slider, Text, Toggler,
     },
-    image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
+    image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
 };
 
 #[derive(Default)]
@@ -44,7 +41,7 @@ impl<'a> Step<'a> for ChooseMethod {
                     Radio::new(
                         item,
                         cu_label(&item, state),
-                        Some(state.calc_unit),
+                        Some(state.config.calc_unit),
                         StepMessage::CalculationUnit,
                     )
                     .style(state.theme),
@@ -60,8 +57,13 @@ impl<'a> Step<'a> for ChooseMethod {
                     .push(Text::new(state.i18n.color_space).size(spacings::_8)),
                 |col, item| {
                     col.push(
-                        Radio::new(item, item, Some(state.color_space), StepMessage::ColorSpace)
-                            .style(state.theme),
+                        Radio::new(
+                            item,
+                            item,
+                            Some(state.config.color_space),
+                            StepMessage::ColorSpace,
+                        )
+                        .style(state.theme),
                     )
                 },
             );
@@ -77,7 +79,7 @@ impl<'a> Step<'a> for ChooseMethod {
                         Radio::new(
                             item,
                             item,
-                            Some(state.dist_algo),
+                            Some(state.config.dist_algo),
                             StepMessage::DistanceAlgorithm,
                         )
                         .style(state.theme),
@@ -102,7 +104,7 @@ impl<'a> Step<'a> for ChooseMethod {
                     Radio::new(
                         item,
                         fl_label(&item, state),
-                        Some(state.filter),
+                        Some(state.config.filter),
                         StepMessage::Filter,
                     )
                     .style(state.theme),
@@ -116,12 +118,15 @@ impl<'a> Step<'a> for ChooseMethod {
             .push(
                 Row::new()
                     .spacing(spacings::_6)
-                    .push(Text::new(format!("K: {}", state.k)))
-                    .push(Slider::new(k_slider, 1..=5, state.k, StepMessage::K).style(state.theme)),
+                    .push(Text::new(format!("K: {}", state.config.k)))
+                    .push(
+                        Slider::new(k_slider, 1..=5, state.config.k, StepMessage::K)
+                            .style(state.theme),
+                    ),
             )
             .push(
                 Toggler::new(
-                    state.hamerly,
+                    state.config.hamerly,
                     Some(String::from("Hamerly")),
                     StepMessage::Hamerly,
                 )
@@ -134,9 +139,12 @@ impl<'a> Step<'a> for ChooseMethod {
             .push(
                 Row::new()
                     .spacing(spacings::_6)
-                    .push(Text::new(format!("{}: {}", state.i18n.size, state.size)))
+                    .push(Text::new(format!(
+                        "{}: {}",
+                        state.i18n.size, state.config.size
+                    )))
                     .push(
-                        Slider::new(size_slider, 50..=300, state.size, StepMessage::Size)
+                        Slider::new(size_slider, 50..=300, state.config.size, StepMessage::Size)
                             .style(state.theme),
                     ),
             );

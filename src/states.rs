@@ -4,8 +4,7 @@ use {
         streams::{crawler, process},
         styles::Theme,
     },
-    image::imageops::FilterType,
-    image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
+    image_diff::ProcessConfig,
     std::{collections::HashMap, path::PathBuf},
 };
 
@@ -13,6 +12,7 @@ pub const LIBRARY_BTN_CNT: usize = 16;
 pub const IMAGE_FILTER: [&str; 3] = ["png", "jpg", "jpeg"];
 pub const VIDEO_FILTER: [&str; 1] = ["mp4"];
 
+#[derive(Default)]
 pub struct State {
     pub i18n: &'static I18n,
     pub theme: Theme,
@@ -25,13 +25,7 @@ pub struct State {
     pub crawler_id: usize,
     pub crawlers: HashMap<usize, crawler::Crawler>,
 
-    pub calc_unit: CalculationUnit,
-    pub color_space: ColorSpace,
-    pub dist_algo: DistanceAlgorithm,
-    pub filter: Filter,
-    pub k: u8,
-    pub hamerly: bool,
-    pub size: u16,
+    pub config: ProcessConfig,
 
     pub step: [f32; 3],
     pub percentage: [f32; 3],
@@ -42,31 +36,6 @@ impl State {
     #[inline(always)]
     pub fn is_full(&self) -> bool {
         self.libraries.len() + self.pending.len() + self.crawlers.len() >= LIBRARY_BTN_CNT
-    }
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self {
-            i18n: Default::default(),
-            theme: Default::default(),
-            target_type: Default::default(),
-            target_path: Default::default(),
-            libraries: Default::default(),
-            pending: Default::default(),
-            crawler_id: Default::default(),
-            crawlers: Default::default(),
-            calc_unit: Default::default(),
-            color_space: Default::default(),
-            dist_algo: Default::default(),
-            filter: Default::default(),
-            k: 1,
-            hamerly: Default::default(),
-            size: 100,
-            step: Default::default(),
-            percentage: Default::default(),
-            process: Default::default(),
-        }
     }
 }
 
@@ -204,30 +173,3 @@ pub const ZH_CN: I18n = I18n {
     fill: "填充图片",
     composite: "合成",
 };
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum Filter {
-    Nearest,
-    Triangle,
-    CatmullRom,
-    Gaussian,
-    Lanczos3,
-}
-
-impl Default for Filter {
-    fn default() -> Self {
-        Self::Nearest
-    }
-}
-
-impl From<Filter> for FilterType {
-    fn from(filter: Filter) -> FilterType {
-        match filter {
-            Filter::Nearest => FilterType::Nearest,
-            Filter::Triangle => FilterType::Triangle,
-            Filter::CatmullRom => FilterType::CatmullRom,
-            Filter::Gaussian => FilterType::Gaussian,
-            Filter::Lanczos3 => FilterType::Lanczos3,
-        }
-    }
-}

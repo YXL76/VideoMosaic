@@ -5,14 +5,14 @@ mod process_preview;
 
 use {
     crate::{
-        states::{Filter, State},
+        states::State,
         streams::{crawler, process},
     },
     choose_library::ChooseLibrary,
     choose_method::ChooseMethod,
     choose_target::ChooseTarget,
     iced::{Element, Subscription},
-    image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
+    image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
     process_preview::ProcessPreview,
     std::path::PathBuf,
 };

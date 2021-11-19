@@ -13,11 +13,11 @@ use {
     kmeans::KMeansImpl,
     palette::{Lab, Pixel},
     pixel::PixelImpl,
-    std::{collections::VecDeque, fmt, path::PathBuf, sync::Arc},
+    std::{fmt, path::PathBuf, sync::Arc},
 };
 
 pub type Mask = (u32, u32, u32, u32);
-pub type Tasks<T> = VecDeque<JoinHandle<T>>;
+pub(crate) type Tasks<T> = Vec<JoinHandle<T>>;
 pub type LibItem = (Vec<RawColor>, Arc<RgbImage>);
 
 type Converter = Box<dyn Fn(&[u8; 3]) -> RawColor + Sync + Send>;
@@ -43,14 +43,19 @@ pub struct ProcessWrapper(Arc<dyn Process + Sync + Send + 'static>);
 impl ProcessWrapper {
     #[inline(always)]
     pub fn new(
-        size: u32,
-        k: usize,
-        hamerly: bool,
-        calc_unit: CalculationUnit,
-        color_space: ColorSpace,
-        dist_algo: DistanceAlgorithm,
-        filter: FilterType,
+        ProcessConfig {
+            size,
+            k,
+            hamerly,
+            calc_unit,
+            color_space,
+            dist_algo,
+            filter,
+        }: ProcessConfig,
     ) -> Self {
+        let size = size.into();
+        let filter = filter.into();
+
         let distance = Box::new(match dist_algo {
             DistanceAlgorithm::Euclidean => match color_space {
                 ColorSpace::HSV => |a: &RawColor, b: &RawColor| {
@@ -84,7 +89,7 @@ impl ProcessWrapper {
             CalculationUnit::Pixel => Arc::new(PixelImpl::new(size, filter, converter, distance)),
             CalculationUnit::KMeans => Arc::new(KMeansImpl::new(
                 size,
-                k,
+                k.into(),
                 hamerly,
                 filter,
                 distance,
@@ -115,7 +120,7 @@ impl ProcessWrapper {
                     None
                 })
             })
-            .collect::<VecDeque<_>>()
+            .collect::<Vec<_>>()
     }
 
     #[inline(always)]
@@ -133,7 +138,7 @@ impl ProcessWrapper {
                 let inner = self.inner();
                 spawn_blocking(move || inner.fill_step(img, mask, lib))
             })
-            .collect::<VecDeque<_>>()
+            .collect::<Vec<_>>()
     }
 
     #[inline(always)]
@@ -157,11 +162,63 @@ impl fmt::Debug for ProcessWrapper {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct ProcessConfig {
+    pub size: u16,
+    pub k: u8,
+    pub hamerly: bool,
+    pub calc_unit: CalculationUnit,
+    pub color_space: ColorSpace,
+    pub dist_algo: DistanceAlgorithm,
+    pub filter: Filter,
+}
+
+impl Default for ProcessConfig {
+    fn default() -> Self {
+        Self {
+            size: 100,
+            k: 1,
+            hamerly: false,
+            calc_unit: Default::default(),
+            color_space: Default::default(),
+            dist_algo: Default::default(),
+            filter: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum Filter {
+    Nearest,
+    Triangle,
+    CatmullRom,
+    Gaussian,
+    Lanczos3,
+}
+
+impl Default for Filter {
+    fn default() -> Self {
+        Self::Nearest
+    }
+}
+
+impl From<Filter> for FilterType {
+    fn from(filter: Filter) -> FilterType {
+        match filter {
+            Filter::Nearest => FilterType::Nearest,
+            Filter::Triangle => FilterType::Triangle,
+            Filter::CatmullRom => FilterType::CatmullRom,
+            Filter::Gaussian => FilterType::Gaussian,
+            Filter::Lanczos3 => FilterType::Lanczos3,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
         async_std::task::block_on,
-        image::{self, imageops::FilterType, ImageBuffer, RgbImage},
+        image::{self, ImageBuffer, RgbImage},
         std::{fs::read_dir, path::PathBuf, sync::Arc},
     };
 
@@ -170,15 +227,15 @@ mod tests {
         let size = 50;
         let k = 1;
         let hamerly = false;
-        let proc = super::ProcessWrapper::new(
+        let proc = super::ProcessWrapper::new(super::ProcessConfig {
             size,
             k,
             hamerly,
-            crate::CalculationUnit::Average,
-            crate::ColorSpace::CIELAB,
-            crate::DistanceAlgorithm::CIEDE2000,
-            FilterType::Nearest,
-        );
+            calc_unit: crate::CalculationUnit::Average,
+            color_space: crate::ColorSpace::CIELAB,
+            dist_algo: crate::DistanceAlgorithm::CIEDE2000,
+            filter: super::Filter::Nearest,
+        });
         let library = read_dir("../image_crawler/test")
             .unwrap()
             .filter_map(|res| match res.as_ref() {
@@ -212,7 +269,7 @@ mod tests {
                     .unwrap()
                     .into_rgb8(),
             );
-            let masks = super::ProcessWrapper::mask(size, &img);
+            let masks = super::ProcessWrapper::mask(size as u32, &img);
             let (width, height) = img.dimensions();
 
             let tasks = proc.fill(img, lib, &masks);
