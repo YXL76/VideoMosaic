@@ -161,18 +161,23 @@ impl fmt::Debug for ProcessWrapper {
 mod tests {
     use {
         async_std::task::block_on,
-        image::{self, ImageBuffer, RgbImage},
+        image::{self, imageops::FilterType, ImageBuffer, RgbImage},
         std::{fs::read_dir, path::PathBuf, sync::Arc},
     };
 
     #[test]
     fn process() {
         let size = 50;
+        let k = 1;
+        let hamerly = false;
         let proc = super::ProcessWrapper::new(
             size,
+            k,
+            hamerly,
             crate::CalculationUnit::Average,
             crate::ColorSpace::CIELAB,
             crate::DistanceAlgorithm::CIEDE2000,
+            FilterType::Nearest,
         );
         let library = read_dir("../image_crawler/test")
             .unwrap()

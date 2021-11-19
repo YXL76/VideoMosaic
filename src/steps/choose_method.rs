@@ -101,7 +101,7 @@ impl<'a> Step<'a> for ChooseMethod {
                 col.push(
                     Radio::new(
                         item,
-                        fl_label(&item, &state),
+                        fl_label(&item, state),
                         Some(state.filter),
                         StepMessage::Filter,
                     )

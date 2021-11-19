@@ -220,14 +220,14 @@ impl Default for Filter {
     }
 }
 
-impl Into<FilterType> for Filter {
-    fn into(self) -> FilterType {
-        match self {
-            Self::Nearest => FilterType::Nearest,
-            Self::Triangle => FilterType::Triangle,
-            Self::CatmullRom => FilterType::CatmullRom,
-            Self::Gaussian => FilterType::Gaussian,
-            Self::Lanczos3 => FilterType::Lanczos3,
+impl From<Filter> for FilterType {
+    fn from(filter: Filter) -> FilterType {
+        match filter {
+            Filter::Nearest => FilterType::Nearest,
+            Filter::Triangle => FilterType::Triangle,
+            Filter::CatmullRom => FilterType::CatmullRom,
+            Filter::Gaussian => FilterType::Gaussian,
+            Filter::Lanczos3 => FilterType::Lanczos3,
         }
     }
 }

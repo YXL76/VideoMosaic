@@ -18,7 +18,7 @@ impl text_input::StyleSheet for TextInput {
     fn focused(&self) -> text_input::Style {
         text_input::Style {
             border_width: 2.,
-            border_color: colors::blue::_500.into(),
+            border_color: colors::blue::_500,
             ..self.active()
         }
     }
@@ -40,7 +40,7 @@ impl text_input::StyleSheet for TextInput {
             border_width: 2.,
             border_color: Color {
                 a: 0.7,
-                ..colors::blue::_500.into()
+                ..colors::blue::_500
             },
             ..self.focused()
         }

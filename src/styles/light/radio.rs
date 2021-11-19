@@ -9,9 +9,9 @@ impl radio::StyleSheet for Radio {
     fn active(&self) -> radio::Style {
         radio::Style {
             background: Color::WHITE.into(),
-            dot_color: colors::sky::_500.into(),
+            dot_color: colors::sky::_500,
             border_width: 1.,
-            border_color: colors::sky::_500.into(),
+            border_color: colors::sky::_500,
         }
     }
 

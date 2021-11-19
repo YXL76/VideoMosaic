@@ -9,13 +9,13 @@ impl toggler::StyleSheet for Toggler {
     fn active(&self, is_active: bool) -> toggler::Style {
         toggler::Style {
             background: match is_active {
-                true => colors::sky::_500.into(),
-                false => colors::cool_gray::_100.into(),
+                true => colors::sky::_500,
+                false => colors::cool_gray::_100,
             },
             background_border: None,
             foreground: match is_active {
-                true => Color::WHITE.into(),
-                false => colors::sky::_500.into(),
+                true => Color::WHITE,
+                false => colors::sky::_500,
             },
             foreground_border: None,
         }
@@ -32,8 +32,7 @@ impl toggler::StyleSheet for Toggler {
                     a: 0.6,
                     ..colors::sky::_500
                 },
-            }
-            .into(),
+            },
             ..self.active(is_active)
         }
     }
