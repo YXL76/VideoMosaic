@@ -1,6 +1,6 @@
 use {
     super::{dark, light},
-    iced::{button, container, progress_bar, radio, rule, scrollable, slider, text_input},
+    iced::{button, container, progress_bar, radio, rule, scrollable, slider, text_input, toggler},
 };
 
 #[derive(Copy, Clone)]
@@ -118,6 +118,15 @@ impl<'a> From<Theme> for Box<dyn text_input::StyleSheet + 'a> {
         match theme {
             Theme::Light => light::TextInput.into(),
             Theme::Dark => dark::TextInput.into(),
+        }
+    }
+}
+
+impl From<Theme> for Box<dyn toggler::StyleSheet> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => light::Toggler.into(),
+            Theme::Dark => dark::Toggler.into(),
         }
     }
 }

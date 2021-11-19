@@ -205,6 +205,10 @@ impl<'a> Application for MosaicVideo<'a> {
                 StepMessage::CalculationUnit(item) => state.calc_unit = item,
                 StepMessage::ColorSpace(item) => state.color_space = item,
                 StepMessage::DistanceAlgorithm(item) => state.dist_algo = item,
+                StepMessage::Filter(item) => state.filter = item,
+                StepMessage::K(item) => state.k = item,
+                StepMessage::Hamerly(item) => state.hamerly = item,
+                StepMessage::Size(item) => state.size = item,
 
                 StepMessage::Start => {
                     if let Ok(img) = image::open(&state.target_path) {
@@ -225,10 +229,13 @@ impl<'a> Application for MosaicVideo<'a> {
                         state.step[0] = 100. / library.len() as f32;
                         state.step[1] = 100. / masks.len() as f32;
                         state.process = Some(process::Process::new(
-                            50,
+                            state.size as u32,
+                            state.k as usize,
+                            state.hamerly,
                             state.calc_unit,
                             state.color_space,
                             state.dist_algo,
+                            state.filter,
                             img,
                             library,
                             masks,

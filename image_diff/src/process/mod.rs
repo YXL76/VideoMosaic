@@ -26,6 +26,8 @@ type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
 trait Process {
     fn size(&self) -> u32;
 
+    fn filter(&self) -> FilterType;
+
     fn index_step(&self, img: RgbImage) -> LibItem;
 
     fn fill_step(
@@ -42,9 +44,12 @@ impl ProcessWrapper {
     #[inline(always)]
     pub fn new(
         size: u32,
+        k: usize,
+        hamerly: bool,
         calc_unit: CalculationUnit,
         color_space: ColorSpace,
         dist_algo: DistanceAlgorithm,
+        filter: FilterType,
     ) -> Self {
         let distance = Box::new(match dist_algo {
             DistanceAlgorithm::Euclidean => match color_space {
@@ -73,9 +78,18 @@ impl ProcessWrapper {
         });
 
         Self(match calc_unit {
-            CalculationUnit::Average => Arc::new(AverageImpl::new(size, converter, distance)),
-            CalculationUnit::Pixel => Arc::new(PixelImpl::new(size, converter, distance)),
-            CalculationUnit::KMeans => Arc::new(KMeansImpl::new(size, distance, color_space)),
+            CalculationUnit::Average => {
+                Arc::new(AverageImpl::new(size, filter, converter, distance))
+            }
+            CalculationUnit::Pixel => Arc::new(PixelImpl::new(size, filter, converter, distance)),
+            CalculationUnit::KMeans => Arc::new(KMeansImpl::new(
+                size,
+                k,
+                hamerly,
+                filter,
+                distance,
+                color_space,
+            )),
         })
     }
 
@@ -94,7 +108,7 @@ impl ProcessWrapper {
                 spawn_blocking(move || {
                     if let Ok(img) = image::open(lib) {
                         let img = img
-                            .resize_to_fill(inner.size(), inner.size(), FilterType::Nearest)
+                            .resize_to_fill(inner.size(), inner.size(), inner.filter())
                             .into_rgb8();
                         return Some(inner.index_step(img));
                     }

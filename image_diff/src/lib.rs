@@ -57,7 +57,7 @@ pub enum CalculationUnit {
 
 impl Default for CalculationUnit {
     fn default() -> Self {
-        Self::KMeans
+        Self::Average
     }
 }
 
@@ -70,7 +70,17 @@ pub enum ColorSpace {
 
 impl Default for ColorSpace {
     fn default() -> Self {
-        Self::CIELAB
+        Self::RGB
+    }
+}
+
+impl Into<String> for ColorSpace {
+    fn into(self) -> String {
+        String::from(match self {
+            Self::RGB => "RGB",
+            Self::HSV => "HSV",
+            Self::CIELAB => "CIE L*a*b*",
+        })
     }
 }
 
@@ -82,6 +92,15 @@ pub enum DistanceAlgorithm {
 
 impl Default for DistanceAlgorithm {
     fn default() -> Self {
-        Self::CIEDE2000
+        Self::Euclidean
+    }
+}
+
+impl Into<String> for DistanceAlgorithm {
+    fn into(self) -> String {
+        String::from(match self {
+            Self::Euclidean => "Euclidean",
+            Self::CIEDE2000 => "CIEDE2000",
+        })
     }
 }

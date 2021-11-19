@@ -5,7 +5,7 @@ mod process_preview;
 
 use {
     crate::{
-        states::State,
+        states::{Filter, State},
         streams::{crawler, process},
     },
     choose_library::ChooseLibrary,
@@ -33,6 +33,10 @@ pub enum StepMessage {
     CalculationUnit(CalculationUnit),
     ColorSpace(ColorSpace),
     DistanceAlgorithm(DistanceAlgorithm),
+    Filter(Filter),
+    K(u8),
+    Hamerly(bool),
+    Size(u16),
     Start,
     ProcessMessage(process::Progress),
 }

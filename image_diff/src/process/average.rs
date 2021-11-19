@@ -1,12 +1,13 @@
 use {
     super::{Converter, Distance, LibItem, Mask, Process},
     crate::utils::RawColor,
-    image::{self, RgbImage},
+    image::{self, imageops::FilterType, RgbImage},
     std::sync::Arc,
 };
 
 pub(super) struct AverageImpl {
     size: u32,
+    filter: FilterType,
     converter: Converter,
     distance: Distance,
 }
@@ -15,6 +16,11 @@ impl Process for AverageImpl {
     #[inline(always)]
     fn size(&self) -> u32 {
         self.size
+    }
+
+    #[inline(always)]
+    fn filter(&self) -> FilterType {
+        self.filter
     }
 
     #[inline(always)]
@@ -50,9 +56,15 @@ impl Process for AverageImpl {
 
 impl AverageImpl {
     #[inline(always)]
-    pub(super) fn new(size: u32, converter: Converter, distance: Distance) -> Self {
+    pub(super) fn new(
+        size: u32,
+        filter: FilterType,
+        converter: Converter,
+        distance: Distance,
+    ) -> Self {
         Self {
             size,
+            filter,
             converter,
             distance,
         }

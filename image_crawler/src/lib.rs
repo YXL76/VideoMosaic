@@ -65,7 +65,7 @@ pub fn download_urls(
     filter: &'static [&str],
     folder: PathBuf,
 ) -> VecDeque<JoinHandle<Result<bool>>> {
-    urls.iter()
+    urls.into_iter()
         .enumerate()
         .map(|(idx, url)| {
             let url = url.clone();

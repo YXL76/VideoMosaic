@@ -8,6 +8,7 @@ use {
     },
     iced::{
         button, scrollable, Alignment, Column, Element, Length, ProgressBar, Row, Rule, Scrollable,
+        Text,
     },
 };
 
@@ -47,13 +48,25 @@ impl<'a> Step<'a> for ProcessPreview {
             spacings::_32,
             &state.theme,
         );
-        if state.process.is_some() {
+        if state.process.is_none() {
             btn = btn.on_press(StepMessage::Start);
         }
 
+        let labels = [state.i18n.index, state.i18n.fill, state.i18n.composite]
+            .into_iter()
+            .fold(Column::new().spacing(spacings::_8), |col, label| {
+                col.push(Text::new(label).size(spacings::_6))
+            });
+
         let progresses = state.percentage.iter().fold(
             Column::new().spacing(spacings::_6).width(Length::Fill),
-            |col, &perc| col.push(ProgressBar::new(0.0..=100.0, perc).style(state.theme)),
+            |col, &perc| {
+                col.push(
+                    ProgressBar::new(0.0..=100.0, perc)
+                        .height(Length::Units(spacings::_8))
+                        .style(state.theme),
+                )
+            },
         );
 
         Scrollable::new(scroll)
@@ -62,9 +75,10 @@ impl<'a> Step<'a> for ProcessPreview {
                     .spacing(spacings::_8)
                     .align_items(Alignment::Center)
                     .push(btn)
+                    .push(labels)
                     .push(progresses),
             )
-            .push(Rule::horizontal(spacings::_4).style(state.theme))
+            .push(Rule::horizontal(spacings::_16).style(state.theme))
             .height(Length::Fill)
             .style(state.theme)
             .into()

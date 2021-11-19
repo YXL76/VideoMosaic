@@ -1,13 +1,20 @@
 use {
     super::{Step, StepMessage},
-    crate::{states::State, styles::spacings},
-    iced::{scrollable, Column, Element, Length, Radio, Row, Scrollable, Text},
+    crate::{
+        states::{Filter, State},
+        styles::spacings,
+    },
+    iced::{
+        scrollable, slider, Column, Element, Length, Radio, Row, Scrollable, Slider, Text, Toggler,
+    },
     image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm},
 };
 
 #[derive(Default)]
 pub struct ChooseMethod {
     scroll: scrollable::State,
+    k_slider: slider::State,
+    size_slider: slider::State,
 }
 
 impl<'a> Step<'a> for ChooseMethod {
@@ -16,23 +23,27 @@ impl<'a> Step<'a> for ChooseMethod {
     }
 
     fn view(&mut self, state: &State) -> Element<StepMessage> {
-        let Self { scroll } = self;
+        let Self {
+            scroll,
+            k_slider,
+            size_slider,
+        } = self;
 
         let calc_unit = [
             CalculationUnit::Average,
             CalculationUnit::Pixel,
             CalculationUnit::KMeans,
         ]
-        .iter()
+        .into_iter()
         .fold(
             Column::new()
-                .spacing(spacings::_8)
+                .spacing(spacings::_6)
                 .push(Text::new(state.i18n.calc_unit).size(spacings::_8)),
-            |col, &item| {
+            |col, item| {
                 col.push(
                     Radio::new(
                         item,
-                        calc_unit_label(&item, state),
+                        cu_label(&item, state),
                         Some(state.calc_unit),
                         StepMessage::CalculationUnit,
                     )
@@ -42,35 +53,30 @@ impl<'a> Step<'a> for ChooseMethod {
         );
 
         let color_space = [ColorSpace::RGB, ColorSpace::HSV, ColorSpace::CIELAB]
-            .iter()
+            .into_iter()
             .fold(
                 Column::new()
-                    .spacing(spacings::_8)
+                    .spacing(spacings::_6)
                     .push(Text::new(state.i18n.color_space).size(spacings::_8)),
-                |col, &item| {
+                |col, item| {
                     col.push(
-                        Radio::new(
-                            item,
-                            color_space_label(&item, state),
-                            Some(state.color_space),
-                            StepMessage::ColorSpace,
-                        )
-                        .style(state.theme),
+                        Radio::new(item, item, Some(state.color_space), StepMessage::ColorSpace)
+                            .style(state.theme),
                     )
                 },
             );
 
         let dist_algo = [DistanceAlgorithm::Euclidean, DistanceAlgorithm::CIEDE2000]
-            .iter()
+            .into_iter()
             .fold(
                 Column::new()
-                    .spacing(spacings::_8)
+                    .spacing(spacings::_6)
                     .push(Text::new(state.i18n.dist_algo).size(spacings::_8)),
-                |col, &item| {
+                |col, item| {
                     col.push(
                         Radio::new(
                             item,
-                            dist_algo_label(&item, state),
+                            item,
                             Some(state.dist_algo),
                             StepMessage::DistanceAlgorithm,
                         )
@@ -79,13 +85,74 @@ impl<'a> Step<'a> for ChooseMethod {
                 },
             );
 
-        Scrollable::new(scroll)
+        let filter = [
+            Filter::Nearest,
+            Filter::Triangle,
+            Filter::CatmullRom,
+            Filter::Gaussian,
+            Filter::Lanczos3,
+        ]
+        .into_iter()
+        .fold(
+            Column::new()
+                .spacing(spacings::_6)
+                .push(Text::new(state.i18n.sampling).size(spacings::_8)),
+            |col, item| {
+                col.push(
+                    Radio::new(
+                        item,
+                        fl_label(&item, &state),
+                        Some(state.filter),
+                        StepMessage::Filter,
+                    )
+                    .style(state.theme),
+                )
+            },
+        );
+
+        let k_means = Column::new()
+            .spacing(spacings::_6)
+            .push(Text::new(state.i18n.k_means).size(spacings::_8))
             .push(
                 Row::new()
-                    .height(Length::Fill)
-                    .push(calc_unit.width(Length::FillPortion(1)))
-                    .push(color_space.width(Length::FillPortion(1)))
-                    .push(dist_algo.width(Length::FillPortion(1))),
+                    .spacing(spacings::_6)
+                    .push(Text::new(format!("K: {}", state.k)))
+                    .push(Slider::new(k_slider, 1..=5, state.k, StepMessage::K).style(state.theme)),
+            )
+            .push(
+                Toggler::new(
+                    state.hamerly,
+                    Some(String::from("Hamerly")),
+                    StepMessage::Hamerly,
+                )
+                .style(state.theme),
+            );
+
+        let config = Column::new()
+            .spacing(spacings::_6)
+            .push(Text::new(state.i18n.configuration).size(spacings::_8))
+            .push(
+                Row::new()
+                    .spacing(spacings::_6)
+                    .push(Text::new(format!("{}: {}", state.i18n.size, state.size)))
+                    .push(
+                        Slider::new(size_slider, 50..=300, state.size, StepMessage::Size)
+                            .style(state.theme),
+                    ),
+            );
+
+        let l = Length::FillPortion(1);
+        Scrollable::new(scroll)
+            .spacing(spacings::_6)
+            .push(
+                [calc_unit, color_space, dist_algo]
+                    .into_iter()
+                    .fold(Row::new().spacing(spacings::_8), |r, i| r.push(i.width(l))),
+            )
+            .push(
+                [filter, k_means, config]
+                    .into_iter()
+                    .fold(Row::new().spacing(spacings::_8), |r, i| r.push(i.width(l))),
             )
             .height(Length::Fill)
             .style(state.theme)
@@ -93,25 +160,20 @@ impl<'a> Step<'a> for ChooseMethod {
     }
 }
 
-fn calc_unit_label(item: &CalculationUnit, state: &State) -> &'static str {
+fn cu_label(item: &CalculationUnit, state: &State) -> &'static str {
     match item {
-        CalculationUnit::Average => state.i18n.calc_unit_average,
-        CalculationUnit::Pixel => state.i18n.calc_unit_pixel,
-        CalculationUnit::KMeans => state.i18n.calc_unit_k_means,
+        CalculationUnit::Average => state.i18n.average,
+        CalculationUnit::Pixel => state.i18n.pixel,
+        CalculationUnit::KMeans => state.i18n.k_means,
     }
 }
 
-fn color_space_label(item: &ColorSpace, state: &State) -> &'static str {
+fn fl_label(item: &Filter, state: &State) -> &'static str {
     match item {
-        ColorSpace::RGB => state.i18n.color_space_rgb,
-        ColorSpace::HSV => state.i18n.color_space_hsv,
-        ColorSpace::CIELAB => state.i18n.color_space_cielab,
-    }
-}
-
-fn dist_algo_label(item: &DistanceAlgorithm, state: &State) -> &'static str {
-    match item {
-        DistanceAlgorithm::Euclidean => state.i18n.dist_algo_euclidean,
-        DistanceAlgorithm::CIEDE2000 => state.i18n.dist_algo_ciede2000,
+        Filter::Nearest => state.i18n.nearest,
+        Filter::Triangle => state.i18n.triangle,
+        Filter::CatmullRom => state.i18n.catmull_rom,
+        Filter::Gaussian => state.i18n.gaussian,
+        Filter::Lanczos3 => state.i18n.lanczos3,
     }
 }

@@ -1,5 +1,5 @@
 use {
-    kmeans_colors::{Calculate, Sort},
+    kmeans_colors::{Calculate, Hamerly, Sort},
     palette::{
         convert::FromColorUnclamped, encoding, white_point::D65, Clamp, ColorDifference, Hsv,
         IntoColor, Lab, Pixel, Srgb,
@@ -14,6 +14,7 @@ pub(crate) type RawColor = [f32; 3];
 pub trait Color:
     Copy
     + Clone
+    + Hamerly
     + Calculate
     + Sort
     + Clamp

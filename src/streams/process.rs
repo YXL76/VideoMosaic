@@ -1,4 +1,5 @@
 use {
+    crate::states::Filter,
     iced::{
         futures::stream::{unfold, BoxStream},
         Subscription,
@@ -19,9 +20,12 @@ use {
 #[derive(Debug, Clone)]
 pub struct Process {
     size: u32,
+    k: usize,
+    hamerly: bool,
     calc_unit: CalculationUnit,
     color_space: ColorSpace,
     dist_algo: DistanceAlgorithm,
+    filter: Filter,
     img: RgbImage,
     library: Vec<PathBuf>,
     masks: Vec<Mask>,
@@ -31,18 +35,24 @@ impl Process {
     #[inline(always)]
     pub fn new(
         size: u32,
+        k: usize,
+        hamerly: bool,
         calc_unit: CalculationUnit,
         color_space: ColorSpace,
         dist_algo: DistanceAlgorithm,
+        filter: Filter,
         img: RgbImage,
         library: Vec<PathBuf>,
         masks: Vec<Mask>,
     ) -> Self {
         Self {
             size,
+            k,
+            hamerly,
             calc_unit,
             color_space,
             dist_algo,
+            filter,
             img,
             library,
             masks,
@@ -70,7 +80,15 @@ where
         Box::pin(unfold(State::Ready(self), move |state| async move {
             match state {
                 State::Ready(s) => Some({
-                    let proc = ProcessWrapper::new(s.size, s.calc_unit, s.color_space, s.dist_algo);
+                    let proc = ProcessWrapper::new(
+                        s.size,
+                        s.k,
+                        s.hamerly,
+                        s.calc_unit,
+                        s.color_space,
+                        s.dist_algo,
+                        s.filter.into(),
+                    );
                     let lib = Vec::with_capacity(s.library.len());
                     let tasks = proc.index(&s.library);
                     (Progress::None, State::Indexing(s, proc, tasks, lib))
