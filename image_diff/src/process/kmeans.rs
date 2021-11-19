@@ -14,7 +14,7 @@ pub(super) struct KMeansImpl {
     max_iter: usize,
     filter: FilterType,
     distance: Distance,
-    k_means: Box<dyn Fn(usize, usize, f32, &RgbImage, Mask) -> Vec<RawColor> + Sync + Send>,
+    k_means: Box<dyn Fn(usize, usize, f32, &RgbImage, Mask) -> RawColor + Sync + Send>,
 }
 
 impl Process for KMeansImpl {
@@ -30,16 +30,15 @@ impl Process for KMeansImpl {
 
     #[inline(always)]
     fn index_step(&self, img: RgbImage) -> LibItem {
-        let Self {
-            size,
-            k,
-            converge,
-            max_iter,
-            k_means,
-            ..
-        } = self;
+        let Self { k_means, .. } = self;
         (
-            k_means(*k, *max_iter, *converge, &img, (0, 0, *size, *size)),
+            vec![k_means(
+                self.k,
+                self.max_iter,
+                self.converge,
+                &img,
+                (0, 0, self.size, self.size),
+            )],
             Arc::new(img),
         )
     }
@@ -64,8 +63,8 @@ impl Process for KMeansImpl {
         let (_, replace) = lib
             .iter()
             .min_by(|(a, _), (b, _)| {
-                distance(&a[0], &raw[0])
-                    .partial_cmp(&distance(&b[0], &raw[0]))
+                distance(&a[0], &raw)
+                    .partial_cmp(&distance(&b[0], &raw))
                     .unwrap()
             })
             .unwrap();
@@ -132,7 +131,7 @@ macro_rules! k_means {
             converge: f32,
             img: &RgbImage,
             (x, y, w, h): Mask,
-        ) -> Vec<RawColor> {
+        ) -> RawColor {
             const RUNS: u64 = 3;
 
             let mut buf: Vec<T> = Vec::with_capacity((w * h) as usize);
@@ -154,7 +153,13 @@ macro_rules! k_means {
             });
             let mut res = T::sort_indexed_colors(&res.centroids, &res.indices);
             res.sort_unstable_by(|a, b| (b.percentage).partial_cmp(&a.percentage).unwrap());
-            res.into_iter().map(|i| i.centroid.into_raw()).collect()
+            res.into_iter().fold([0f32; 3], |mut ans, i| {
+                let raw: [f32; 3] = i.centroid.into_raw();
+                ans[0] += raw[0] * i.percentage;
+                ans[1] += raw[1] * i.percentage;
+                ans[2] += raw[2] * i.percentage;
+                ans
+            })
         }
     };
 }
