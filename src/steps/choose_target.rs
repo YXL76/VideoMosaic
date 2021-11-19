@@ -53,12 +53,13 @@ impl<'a> Step<'a> for ChooseTarget {
                 pri_btn(video_btn, cv_i, cv_l, spacings::_32, &state.theme)
                     .on_press(StepMessage::TargetType(TargetType::Video)),
             )
-            .push(Space::with_height(Length::FillPortion(1)))
-            .max_height(spacings::_128 as u32);
+            .push(Space::with_height(Length::FillPortion(1)));
 
-        let mut right_side = Column::new()
+        let mut right_side = Scrollable::new(scroll)
             .padding(spacings::_4)
-            .width(Length::Fill)
+            .width(Length::Shrink)
+            .height(Length::Fill)
+            .style(state.theme)
             .align_items(alignment::Alignment::Center);
         let path = state.target_path.to_str().unwrap_or("");
         match state.target_type {
@@ -73,16 +74,12 @@ impl<'a> Step<'a> for ChooseTarget {
             }
             _ => (),
         };
-
-        Scrollable::new(scroll)
-            .push(
-                Row::new()
-                    .spacing(spacings::_4)
-                    .push(left_side)
-                    .push(right_side),
-            )
+        Row::new()
+            .spacing(spacings::_4)
+            .push(left_side)
+            .push(right_side)
             .height(Length::Fill)
-            .style(state.theme)
+            .width(Length::Fill)
             .into()
     }
 }
