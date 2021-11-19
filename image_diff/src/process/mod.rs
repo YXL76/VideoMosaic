@@ -140,26 +140,26 @@ impl ProcessWrapper {
             })
             .collect::<Vec<_>>()
     }
-
-    #[inline(always)]
-    pub fn mask(size: u32, img: &RgbImage) -> Vec<Mask> {
-        let (width, height) = img.dimensions();
-        let mut mask = Vec::with_capacity((((width / size) + 1) * ((height / size) + 1)) as usize);
-        for y in (0..height).step_by(size as usize) {
-            for x in (0..width).step_by(size as usize) {
-                let w = size.min(width - x);
-                let h = size.min(height - y);
-                mask.push((x, y, w, h));
-            }
-        }
-        mask
-    }
 }
 
 impl fmt::Debug for ProcessWrapper {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("").field(&"Process").finish()
     }
+}
+
+#[inline(always)]
+pub fn mask(size: u32, img: &RgbImage) -> Vec<Mask> {
+    let (width, height) = img.dimensions();
+    let mut mask = Vec::with_capacity((((width / size) + 1) * ((height / size) + 1)) as usize);
+    for y in (0..height).step_by(size as usize) {
+        for x in (0..width).step_by(size as usize) {
+            let w = size.min(width - x);
+            let h = size.min(height - y);
+            mask.push((x, y, w, h));
+        }
+    }
+    mask
 }
 
 #[derive(Copy, Clone, Debug)]

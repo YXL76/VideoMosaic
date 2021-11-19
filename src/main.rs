@@ -10,7 +10,6 @@ use {
         Settings, Space, Subscription, Text,
     },
     iced_native::subscription,
-    image_diff::ProcessWrapper,
     rfd::{AsyncMessageDialog, FileDialog, MessageButtons, MessageDialog, MessageLevel},
     states::{State, EN, IMAGE_FILTER, VIDEO_FILTER, ZH_CN},
     std::{
@@ -213,6 +212,11 @@ impl<'a> Application for MosaicVideo<'a> {
                 StepMessage::Start => {
                     if let Ok(img) = image::open(&state.target_path) {
                         let img = Arc::new(img.into_rgb8());
+                        let (width, height) = img.dimensions();
+                        let width = (width + 1) as f32;
+                        let height = (height + 1) as f32;
+                        let size = state.config.size.pow(2) as f32;
+
                         let len = state.libraries.values().fold(0, |s, i| s + i.len());
                         let library = Arc::new(state.libraries.values().fold(
                             Vec::with_capacity(len),
@@ -221,14 +225,13 @@ impl<'a> Application for MosaicVideo<'a> {
                                 vec
                             },
                         ));
-                        let masks = Arc::new(ProcessWrapper::mask(state.config.size as u32, &img));
+
                         for i in state.percentage.iter_mut() {
                             *i = 0.;
                         }
                         state.step[0] = 100. / library.len() as f32;
-                        state.step[1] = 100. / masks.len() as f32;
-                        state.process =
-                            Some(process::Process::new(state.config, img, library, masks))
+                        state.step[1] = 100. / (width * height / size);
+                        state.process = Some(process::Process::new(state.config, img, library))
                     }
                 }
 

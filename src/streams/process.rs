@@ -6,7 +6,7 @@ use {
     },
     iced_native::subscription,
     image::{ImageBuffer, RgbImage},
-    image_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper},
+    image_diff::{mask, LibItem, Mask, ProcessConfig, ProcessWrapper},
     std::{
         any::TypeId,
         hash::{Hash, Hasher},
@@ -21,22 +21,15 @@ pub struct Process {
     config: ProcessConfig,
     img: Arc<RgbImage>,
     library: Arc<Vec<PathBuf>>,
-    masks: Arc<Vec<Mask>>,
 }
 
 impl Process {
     #[inline(always)]
-    pub fn new(
-        config: ProcessConfig,
-        img: Arc<RgbImage>,
-        library: Arc<Vec<PathBuf>>,
-        masks: Arc<Vec<Mask>>,
-    ) -> Self {
+    pub fn new(config: ProcessConfig, img: Arc<RgbImage>, library: Arc<Vec<PathBuf>>) -> Self {
         Self {
             config,
             img,
             library,
-            masks,
         }
     }
 
@@ -66,18 +59,18 @@ where
                     let tasks = proc.index(&s.library).into_iter();
                     (
                         Progress::None,
-                        State::Indexing(s.img, s.masks, proc, tasks, lib),
+                        State::Indexing(s.img, s.config.size as u32, proc, tasks, lib),
                     )
                 }),
 
-                State::Indexing(img, masks, proc, mut tasks, mut lib) => Some(match tasks.next() {
+                State::Indexing(img, size, proc, mut tasks, mut lib) => Some(match tasks.next() {
                     Some(task) => {
                         if let Some(i) = task.await {
                             lib.push(i);
                         }
                         (
                             Progress::Indexing,
-                            State::Indexing(img, masks, proc, tasks, lib),
+                            State::Indexing(img, size, proc, tasks, lib),
                         )
                     }
                     None => match lib.is_empty() {
@@ -88,6 +81,7 @@ where
                         false => {
                             let (width, height) = img.dimensions();
                             let img_buf: RgbImage = ImageBuffer::new(width, height);
+                            let masks = mask(size, &img);
                             let tasks = proc.fill(img, Arc::new(lib), &masks).into_iter();
                             (Progress::None, State::Filling(proc, tasks, img_buf))
                         }
@@ -127,7 +121,7 @@ enum State {
     Ready(Box<Process>),
     Indexing(
         Arc<RgbImage>,
-        Arc<Vec<Mask>>,
+        u32,
         ProcessWrapper,
         IntoIter<JoinHandle<Option<LibItem>>>,
         Vec<LibItem>,
