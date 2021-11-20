@@ -33,12 +33,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             asciidoc \
-            autoconf \
-            automake \
-            build-essential \
             clang \
             cmake \
-            curl \
             flite1-dev \
             libaom-dev \
             libass-dev \
@@ -61,8 +57,6 @@ jobs:
             libdc1394-dev \
             libdrm-dev \
             libfdk-aac-dev \
-            libfontconfig-dev \
-            libfreetype6-dev \
             libgme-dev \
             libgnutls28-dev \
             libgsm1-dev \
@@ -91,7 +85,6 @@ jobs:
             libswresample-dev \
             libswscale-dev \
             libtheora-dev \
-            libtool \
             libtwolame-dev \
             libunistring-dev \
             libva-dev \
@@ -100,17 +93,12 @@ jobs:
             libvorbis-dev \
             libvpx-dev \
             libwavpack-dev \
-            libwebpmux3 \
             libwebp-dev \
-            libx11-dev \
             libx264-dev \
             libx265-dev \
-            libxcb1-dev \
-            libxcb-shm0-dev \
             libxcb-xfixes0-dev \
             libxext-dev \
             libxkbcommon-dev \
-            libexpat1-dev \
             libxv-dev \
             libxvidcore-dev \
             libzvbi-dev \
@@ -120,7 +108,7 @@ jobs:
         if: runner.os == 'Linux'
 
       - name: Install dependencies
-        run: brew install automake ffmpeg fdk-aac freetype glib lame libass libtool libvorbis libvpx nasm opus pkg-config rubberband sdl shtool texi2html theora wget x264 x265 xvid
+        run: brew install automake ffmpeg fdk-aac nasm rubberband shtool texi2html
         if: runner.os == 'macOS'
 
       - name: Install dependencies
@@ -149,4 +137,6 @@ jobs:
           override: true
 
       - name: Build
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "10.9"
         run: cargo build
