@@ -108,7 +108,14 @@ jobs:
         if: runner.os == 'Linux'
 
       - name: Install dependencies
-        run: brew install automake ffmpeg fdk-aac nasm rubberband shtool texi2html
+        run: brew install automake ffmpeg fdk-aac nasm shtool texi2html
+        if: runner.os == 'macOS'
+
+      - name: Install dependencies
+        run: |
+          brew uninstall --ignore-dependencies rubberband
+          brew extract --version=1.9.2 rubberband homebrew/cask
+          brew install rubberband@1.9.2
         if: runner.os == 'macOS'
 
       - name: Install dependencies
@@ -138,5 +145,10 @@ jobs:
 
       - name: Build
         env:
-          MACOSX_DEPLOYMENT_TARGET: "10.9"
-        run: cargo build
+          MACOSX_DEPLOYMENT_TARGET: 10.14
+        run: cargo build --release
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ runner.os }}-x64
+          path: target/release/mosaic_video
