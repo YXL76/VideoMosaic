@@ -17,6 +17,7 @@ features = ["unstable"]
 
 [dependencies.ffmpeg-next]
 version = "4.4"
+features = ["static"]
 
 [dependencies.kmeans_colors]
 git = "https://github.com/YXL76/kmeans-colors"
