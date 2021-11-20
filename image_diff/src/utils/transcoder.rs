@@ -1,8 +1,11 @@
 use {
+    super::FrameIter,
     ffmpeg::{
-        codec, decoder, encoder, format, frame, media, picture, Dictionary, Packet, Rational,
+        codec, decoder, encoder, format, frame, media, picture, software, Dictionary, Packet,
+        Rational,
     },
-    std::collections::HashMap,
+    image::RgbImage,
+    std::{collections::HashMap, sync::Arc},
 };
 
 pub(crate) struct Transcode {
@@ -12,10 +15,16 @@ pub(crate) struct Transcode {
     ist_time_bases: Vec<Rational>,
     ost_time_bases: Vec<Rational>,
     transcoders: HashMap<usize, Transcoder>,
+
+    last: Option<(usize, Rational, Option<i64>, frame::Video)>,
 }
 
-impl Transcode {
-    fn new(input: String, output: String) -> Self {
+unsafe impl Send for Transcode {}
+
+unsafe impl Sync for Transcode {}
+
+impl FrameIter for Transcode {
+    fn new(input: String, output: String) -> (Self, (i64, u32, u32)) {
         let ictx = format::input(&input).unwrap();
         let mut octx = format::output(&output).unwrap();
         format::context::input::dump(&ictx, 0, Some(&input));
@@ -26,7 +35,9 @@ impl Transcode {
         let mut transcoders = HashMap::new();
         let mut ost_index = 0;
 
+        let mut cnt = 0;
         for (ist_index, ist) in ictx.streams().enumerate() {
+            cnt = cnt.max(ist.frames());
             let ist_medium = ist.codec().medium();
             if ist_medium != media::Type::Audio
                 && ist_medium != media::Type::Video
@@ -60,17 +71,25 @@ impl Transcode {
             ost_time_bases[ost_index] = octx.stream(ost_index as _).unwrap().time_base();
         }
 
-        Self {
-            ictx,
-            octx,
-            stream_mapping,
-            ist_time_bases,
-            ost_time_bases,
-            transcoders,
-        }
+        let rnd_frame = transcoders.values().next().unwrap();
+        let width = rnd_frame.width();
+        let height = rnd_frame.height();
+        (
+            Self {
+                ictx,
+                octx,
+                stream_mapping,
+                ist_time_bases,
+                ost_time_bases,
+                transcoders,
+
+                last: None,
+            },
+            (cnt, width, height),
+        )
     }
 
-    fn next(&mut self) {
+    fn next(&mut self) -> Option<Arc<RgbImage>> {
         let Self {
             ictx,
             octx,
@@ -78,7 +97,24 @@ impl Transcode {
             ist_time_bases,
             ost_time_bases,
             transcoders,
+            last,
         } = self;
+
+        if let Some((ist_index, _, old_timestamp, old_frame)) = last {
+            if let Some(transcoder) = transcoders.get_mut(&ist_index) {
+                // transcoder.receive_and_process_decoded_frames(octx, ost_time_base);
+                if let Some((timestamp, frame)) = transcoder.receive_decoded_frames() {
+                    let width = transcoder.width();
+                    let height = transcoder.height();
+                    let buf = frame.data(0).to_owned();
+                    *old_timestamp = timestamp;
+                    *old_frame = frame;
+                    let img = RgbImage::from_raw(width, height, buf).unwrap();
+                    return Some(Arc::new(img));
+                }
+            }
+        }
+        *last = None;
 
         for (stream, mut packet) in ictx.packets() {
             let ist_index = stream.index();
@@ -91,7 +127,15 @@ impl Transcode {
                 Some(transcoder) => {
                     packet.rescale_ts(stream.time_base(), transcoder.decoder.time_base());
                     transcoder.send_packet_to_decoder(&packet);
-                    transcoder.receive_and_process_decoded_frames(octx, ost_time_base);
+                    // transcoder.receive_and_process_decoded_frames(octx, ost_time_base);
+                    if let Some((timestamp, frame)) = transcoder.receive_decoded_frames() {
+                        let width = transcoder.width();
+                        let height = transcoder.height();
+                        let buf = frame.data(0).to_owned();
+                        *last = Some((ist_index, ost_time_base, timestamp, frame));
+                        let img = RgbImage::from_raw(width, height, buf).unwrap();
+                        return Some(Arc::new(img));
+                    }
                 }
                 None => {
                     packet.rescale_ts(ist_time_bases[ist_index], ost_time_base);
@@ -99,6 +143,24 @@ impl Transcode {
                     packet.set_stream(ost_index as _);
                     packet.write_interleaved(octx).unwrap();
                 }
+            }
+        }
+
+        None
+    }
+
+    fn post_next(&mut self, img: &RgbImage) {
+        let Self {
+            octx,
+            transcoders,
+            last,
+            ..
+        } = self;
+        if let Some((ist_index, ost_time_base, timestamp, frame)) = last {
+            if let Some(transcoder) = transcoders.get_mut(&ist_index) {
+                // transcoder.receive_and_process_decoded_frames(octx, ost_time_base);
+                frame.data_mut(0).copy_from_slice(img.as_raw());
+                transcoder.process_decoded_frames(*timestamp, frame, octx, *ost_time_base);
             }
         }
     }
@@ -123,10 +185,12 @@ impl Transcode {
     }
 }
 
-pub(crate) struct Transcoder {
+struct Transcoder {
     ost_index: usize,
-    decoder: decoder::Video,
+    pub(super) decoder: decoder::Video,
     encoder: encoder::video::Video,
+    f2i: software::scaling::Context,
+    i2f: software::scaling::Context,
 }
 
 impl Transcoder {
@@ -137,6 +201,17 @@ impl Transcoder {
     ) -> Result<Self, ffmpeg::Error> {
         let global_header = octx.format().flags().contains(format::Flags::GLOBAL_HEADER);
         let decoder = ist.codec().decoder().video()?;
+        let f2i = decoder.converter(format::Pixel::RGB24)?;
+        let i2f = software::scaling::Context::get(
+            format::Pixel::RGB24,
+            decoder.width(),
+            decoder.height(),
+            decoder.format(),
+            decoder.width(),
+            decoder.height(),
+            software::scaling::Flags::FAST_BILINEAR,
+        )
+        .unwrap();
         let mut ost = octx.add_stream(encoder::find(codec::Id::H264))?;
         let mut encoder = ost.codec().encoder().video()?;
         encoder.set_height(decoder.height());
@@ -153,19 +228,60 @@ impl Transcoder {
         encoder.open_with(x264_opts)?;
         encoder = ost.codec().encoder().video()?;
         ost.set_parameters(encoder);
+        let encoder = ost.codec().encoder().video()?;
         Ok(Self {
             ost_index,
             decoder,
-            encoder: ost.codec().encoder().video()?,
+            encoder,
+            f2i,
+            i2f,
         })
     }
 
+    #[inline(always)]
+    fn width(&self) -> u32 {
+        self.decoder.width()
+    }
+
+    #[inline(always)]
+    fn height(&self) -> u32 {
+        self.decoder.height()
+    }
+
+    #[inline(always)]
     fn send_packet_to_decoder(&mut self, packet: &Packet) {
         self.decoder.send_packet(packet).unwrap();
     }
 
+    #[inline(always)]
     fn send_eof_to_decoder(&mut self) {
         self.decoder.send_eof().unwrap();
+    }
+
+    fn receive_decoded_frames(&mut self) -> Option<(Option<i64>, frame::Video)> {
+        let mut decoded = frame::Video::empty();
+        if self.decoder.receive_frame(&mut decoded).is_ok() {
+            let mut rgb_frame = frame::Video::empty();
+            let timestamp = decoded.timestamp();
+            self.f2i.run(&decoded, &mut rgb_frame).unwrap();
+            return Some((timestamp, rgb_frame));
+        }
+        None
+    }
+
+    fn process_decoded_frames(
+        &mut self,
+        timestamp: Option<i64>,
+        frame: &frame::Video,
+        octx: &mut format::context::Output,
+        ost_time_base: Rational,
+    ) {
+        let mut decoded = frame::Video::empty();
+        self.i2f.run(frame, &mut decoded).unwrap();
+        decoded.set_pts(timestamp);
+        decoded.set_kind(picture::Type::None);
+        self.send_frame_to_encoder(&decoded);
+        self.receive_and_process_encoded_packets(octx, ost_time_base);
     }
 
     fn receive_and_process_decoded_frames(
@@ -183,10 +299,12 @@ impl Transcoder {
         }
     }
 
+    #[inline(always)]
     fn send_frame_to_encoder(&mut self, frame: &frame::Video) {
         self.encoder.send_frame(frame).unwrap();
     }
 
+    #[inline(always)]
     fn send_eof_to_encoder(&mut self) {
         self.encoder.send_eof().unwrap();
     }

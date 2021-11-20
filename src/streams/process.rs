@@ -5,8 +5,8 @@ use {
         Subscription,
     },
     iced_native::subscription,
-    image::{ImageBuffer, RgbImage},
-    image_diff::{mask, LibItem, Mask, ProcessConfig, ProcessWrapper},
+    image::RgbImage,
+    image_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper},
     std::{
         any::TypeId,
         hash::{Hash, Hasher},
@@ -19,17 +19,27 @@ use {
 #[derive(Debug, Clone)]
 pub struct Process {
     config: ProcessConfig,
-    img: Arc<RgbImage>,
+    input: String,
+    output: String,
+    video: bool,
     library: Arc<Vec<PathBuf>>,
 }
 
 impl Process {
     #[inline(always)]
-    pub fn new(config: ProcessConfig, img: Arc<RgbImage>, library: Arc<Vec<PathBuf>>) -> Self {
+    pub fn new(
+        config: ProcessConfig,
+        input: String,
+        output: String,
+        video: bool,
+        library: Vec<PathBuf>,
+    ) -> Self {
         Self {
             config,
-            img,
-            library,
+            input,
+            output,
+            video,
+            library: Arc::new(library),
         }
     }
 
@@ -54,51 +64,59 @@ where
         Box::pin(unfold(State::Ready(self), move |state| async move {
             match state {
                 State::Ready(s) => Some({
-                    let proc = ProcessWrapper::new(s.config);
-                    let lib = Vec::with_capacity(s.library.len());
-                    let tasks = proc.index(&s.library).into_iter();
+                    let (proc, (cnt, width, height)) =
+                        ProcessWrapper::new(s.config, s.input, s.output, s.video);
+
+                    let size = s.config.size as u32;
                     (
-                        Progress::None,
-                        State::Indexing(s.img, s.config.size as u32, proc, tasks, lib),
+                        Progress::Started(
+                            s.library.len() as f32,
+                            ((width / size + 1) * (height / size + 1)) as f32,
+                            cnt as f32,
+                        ),
+                        State::Start(proc, s.library),
                     )
                 }),
 
-                State::Indexing(img, size, proc, mut tasks, mut lib) => Some(match tasks.next() {
+                State::Start(proc, library) => Some({
+                    let lib = Vec::with_capacity(library.len());
+                    let tasks = proc.index(&library).into_iter();
+                    (Progress::None, State::Indexing(proc, tasks, lib))
+                }),
+
+                State::Indexing(mut proc, mut tasks, mut lib) => Some(match tasks.next() {
                     Some(task) => {
                         if let Some(i) = task.await {
                             lib.push(i);
                         }
-                        (
-                            Progress::Indexing,
-                            State::Indexing(img, size, proc, tasks, lib),
-                        )
+                        (Progress::Indexing, State::Indexing(proc, tasks, lib))
                     }
                     None => match lib.is_empty() {
-                        true => (
-                            Progress::Error(String::from("Library is empty.")),
-                            State::Finished,
-                        ),
+                        true => (Progress::Error, State::Finished),
                         false => {
-                            let (width, height) = img.dimensions();
-                            let img_buf: RgbImage = ImageBuffer::new(width, height);
-                            let masks = mask(size, &img);
-                            let tasks = proc.fill(img, Arc::new(lib), &masks).into_iter();
-                            (Progress::None, State::Filling(proc, tasks, img_buf))
+                            proc.pre_fill(Arc::new(lib));
+                            let tasks = proc.fill().unwrap().into_iter();
+                            (Progress::Indexed, State::Filling(proc, tasks))
                         }
                     },
                 }),
 
-                State::Filling(proc, mut tasks, mut img_buf) => Some(match tasks.next() {
+                State::Filling(mut proc, mut tasks) => Some(match tasks.next() {
                     Some(task) => {
-                        let ((x, y, w, h), replace) = task.await;
-                        for j in 0..h {
-                            for i in 0..w {
-                                img_buf.put_pixel(i + x, j + y, *replace.get_pixel(i, j));
-                            }
-                        }
-                        (Progress::Filling, State::Filling(proc, tasks, img_buf))
+                        let (mask, replace) = task.await;
+                        proc.post_fill_step(mask, replace);
+                        (Progress::Filling, State::Filling(proc, tasks))
                     }
-                    None => (Progress::Finished(img_buf), State::Finished),
+                    None => {
+                        proc.post_fill();
+                        match proc.fill() {
+                            Some(tasks) => {
+                                let tasks = tasks.into_iter();
+                                (Progress::Filled, State::Filling(proc, tasks))
+                            }
+                            None => (Progress::Finished, State::Finished),
+                        }
+                    }
                 }),
 
                 State::Finished => None,
@@ -109,27 +127,25 @@ where
 
 #[derive(Debug, Clone)]
 pub enum Progress {
+    Started(f32, f32, f32),
     Indexing,
+    Indexed,
     Filling,
-    Finished(RgbImage),
+    Filled,
+    Finished,
+    Error,
     None,
-    Error(String),
 }
 
 #[derive(Debug)]
 enum State {
     Ready(Box<Process>),
+    Start(ProcessWrapper, Arc<Vec<PathBuf>>),
     Indexing(
-        Arc<RgbImage>,
-        u32,
         ProcessWrapper,
         IntoIter<JoinHandle<Option<LibItem>>>,
         Vec<LibItem>,
     ),
-    Filling(
-        ProcessWrapper,
-        IntoIter<JoinHandle<(Mask, Arc<RgbImage>)>>,
-        RgbImage,
-    ),
+    Filling(ProcessWrapper, IntoIter<JoinHandle<(Mask, Arc<RgbImage>)>>),
     Finished,
 }

@@ -12,7 +12,7 @@ use {
     std::path::PathBuf,
 };
 
-pub use {ffmpeg::Error, process::*};
+pub use {ffmpeg::Error, process::*, utils::*};
 
 pub fn init() -> Result<(), ffmpeg::Error> {
     ffmpeg::init()
@@ -27,7 +27,7 @@ pub fn first_frame(filename: &PathBuf) -> Result<(u32, u32, Vec<u8>), ffmpeg::Er
 
     let stream_idx = input.index();
     let mut decoder = input.codec().decoder().video()?;
-    let mut scaler = decoder.converter(Pixel::BGRA)?;
+    let mut converter = decoder.converter(Pixel::BGRA)?;
 
     for (stream, packet) in ictx.packets() {
         if stream.index() == stream_idx {
@@ -35,7 +35,7 @@ pub fn first_frame(filename: &PathBuf) -> Result<(u32, u32, Vec<u8>), ffmpeg::Er
             let mut decoded = Video::empty();
             if decoder.receive_frame(&mut decoded).is_ok() {
                 let mut rgb_frame = Video::empty();
-                scaler.run(&decoded, &mut rgb_frame)?;
+                converter.run(&decoded, &mut rgb_frame)?;
                 return Ok((
                     decoder.width(),
                     decoder.height(),

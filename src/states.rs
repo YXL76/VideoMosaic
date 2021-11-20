@@ -37,6 +37,13 @@ impl State {
     pub fn is_full(&self) -> bool {
         self.libraries.len() + self.pending.len() + self.crawlers.len() >= LIBRARY_BTN_CNT
     }
+
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        self.percentage[0] = 0.;
+        self.percentage[1] = 0.;
+        self.percentage[2] = 0.;
+    }
 }
 
 pub struct I18n {
@@ -80,6 +87,7 @@ pub struct I18n {
     pub index: &'static str,
     pub fill: &'static str,
     pub composite: &'static str,
+    pub saved_to_local: &'static str,
 }
 
 impl Default for &I18n {
@@ -129,6 +137,7 @@ pub const EN: I18n = I18n {
     index: "Index",
     fill: "Fill",
     composite: "Composite",
+    saved_to_local: "Saved to local",
 };
 
 pub const ZH_CN: I18n = I18n {
@@ -172,4 +181,5 @@ pub const ZH_CN: I18n = I18n {
     index: "建立索引",
     fill: "填充图片",
     composite: "合成",
+    saved_to_local: "保存至本地",
 };

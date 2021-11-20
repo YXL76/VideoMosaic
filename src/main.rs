@@ -17,7 +17,6 @@ use {
         ffi::OsStr,
         fs::{create_dir, read_dir, remove_dir},
         path::{Path, PathBuf},
-        sync::Arc,
     },
     steps::{StepMessage, Steps, TargetType},
     streams::{crawler, process},
@@ -94,7 +93,10 @@ impl<'a> Application for MosaicVideo<'a> {
                 }
             }
             Message::ExitPressed => self.try_exit(),
-            Message::BackPressed => steps.back(state),
+            Message::BackPressed => {
+                state.clear();
+                steps.back(state);
+            }
             Message::NextPressed => steps.next(state),
 
             Message::NativeEvent(ev) => {
@@ -210,60 +212,60 @@ impl<'a> Application for MosaicVideo<'a> {
                 StepMessage::Size(item) => state.config.size = item,
 
                 StepMessage::Start => {
-                    if let Ok(img) = image::open(&state.target_path) {
-                        let img = Arc::new(img.into_rgb8());
-                        let (width, height) = img.dimensions();
-                        let width = (width + 1) as f32;
-                        let height = (height + 1) as f32;
-                        let size = state.config.size.pow(2) as f32;
+                    let video = state.target_type == TargetType::Video;
 
-                        let len = state.libraries.values().fold(0, |s, i| s + i.len());
-                        let library = Arc::new(state.libraries.values().fold(
-                            Vec::with_capacity(len),
-                            |mut vec, i| {
+                    let ext = OsStr::new(if video { "mp4" } else { "png" });
+                    let mut path = state.target_path.clone();
+                    let mut base = state.target_path.file_stem().unwrap().to_os_string();
+                    base.push("-mosaic");
+                    path.set_file_name(&base);
+                    path.set_extension(ext);
+                    while path.exists() {
+                        base.push("_");
+                        path.set_file_name(&base);
+                        path.set_extension(ext);
+                    }
+
+                    let len = state.libraries.values().fold(0, |sum, i| sum + i.len());
+                    let library =
+                        state
+                            .libraries
+                            .values()
+                            .fold(Vec::with_capacity(len), |mut vec, i| {
                                 vec.extend_from_slice(i);
                                 vec
-                            },
-                        ));
+                            });
 
-                        for i in state.percentage.iter_mut() {
-                            *i = 0.;
-                        }
-                        state.step[0] = 100. / library.len() as f32;
-                        state.step[1] = 100. / (width * height / size);
-                        state.process = Some(process::Process::new(state.config, img, library))
-                    }
+                    state.clear();
+                    state.process = Some(process::Process::new(
+                        state.config,
+                        state.target_path.to_string_lossy().to_string(),
+                        path.to_string_lossy().to_string(),
+                        video,
+                        library,
+                    ))
                 }
 
                 StepMessage::ProcessMessage(ev) => match ev {
+                    process::Progress::Started(a, b, c) => {
+                        state.step[0] = 100. / a;
+                        state.step[1] = 100. / b;
+                        state.step[2] = 100. / c;
+                    }
                     process::Progress::Indexing => state.percentage[0] += state.step[0],
-                    process::Progress::Filling => {
-                        state.percentage[0] = 100.;
-                        state.percentage[1] += state.step[1]
+                    process::Progress::Indexed => state.percentage[0] = 100.,
+                    process::Progress::Filling => state.percentage[1] += state.step[1],
+                    process::Progress::Filled => {
+                        state.percentage[1] = 0.;
+                        state.percentage[2] += state.step[2]
                     }
-                    process::Progress::Finished(img_buf) => {
+                    process::Progress::Finished => {
                         state.percentage[1] = 100.;
+                        state.percentage[2] = 100.;
                         state.process = None;
-                        let ext = OsStr::new("png");
-                        let mut path = state.target_path.clone();
-                        let mut base = state.target_path.file_stem().unwrap().to_os_string();
-                        base.push("-mosaic");
-                        path.set_file_name(&base);
-                        path.set_extension(ext);
-                        while path.exists() {
-                            base.push("_");
-                            path.set_file_name(&base);
-                            path.set_extension(ext);
-                        }
-                        match img_buf.save(&path) {
-                            Ok(_) => info_dialog(state.i18n.info, path.to_string_lossy()),
-                            Err(e) => error_dialog(state.i18n.error, e.to_string().into()),
-                        };
+                        info_dialog(state.i18n.info, state.i18n.saved_to_local.into())
                     }
-                    process::Progress::Error(err) => {
-                        error_dialog(state.i18n.error, err.into());
-                        state.process = None;
-                    }
+                    process::Progress::Error => error_dialog(state.i18n.error, "".into()),
                     process::Progress::None => (),
                 },
             },

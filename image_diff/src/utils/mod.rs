@@ -1,3 +1,4 @@
+mod frame_iter;
 mod transcoder;
 
 use {
@@ -8,7 +9,7 @@ use {
     },
 };
 
-pub(crate) use transcoder::Transcoder;
+pub(crate) use {frame_iter::FrameIter, frame_iter::ImageDump, transcoder::Transcode};
 
 pub(crate) type SRBG = Srgb<f32>;
 pub(crate) type HSV = Hsv<encoding::Srgb, f32>;

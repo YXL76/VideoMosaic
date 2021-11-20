@@ -4,12 +4,12 @@ mod pixel;
 
 use {
     crate::{
-        utils::{ciede2000, converter, RawColor, HSV, SRBG},
-        CalculationUnit, ColorSpace, DistanceAlgorithm,
+        utils::{ciede2000, converter, FrameIter, RawColor, HSV, SRBG},
+        CalculationUnit, ColorSpace, DistanceAlgorithm, ImageDump, Transcode,
     },
     async_std::task::{spawn_blocking, JoinHandle},
     average::AverageImpl,
-    image::{imageops::FilterType, RgbImage},
+    image::{imageops::FilterType, ImageBuffer, RgbImage},
     kmeans::KMeansImpl,
     palette::{Lab, Pixel},
     pixel::PixelImpl,
@@ -38,7 +38,13 @@ trait Process {
     ) -> (Mask, Arc<RgbImage>);
 }
 
-pub struct ProcessWrapper(Arc<dyn Process + Sync + Send + 'static>);
+pub struct ProcessWrapper {
+    iter: Box<dyn FrameIter + Sync + Send + 'static>,
+    inner: Arc<dyn Process + Sync + Send + 'static>,
+    buf: RgbImage,
+    lib: Option<Arc<Vec<LibItem>>>,
+    masks: Option<Vec<Mask>>,
+}
 
 impl ProcessWrapper {
     #[inline(always)]
@@ -52,7 +58,10 @@ impl ProcessWrapper {
             dist_algo,
             filter,
         }: ProcessConfig,
-    ) -> Self {
+        input: String,
+        output: String,
+        video: bool,
+    ) -> (Self, (i64, u32, u32)) {
         let size = size.into();
         let filter = filter.into();
 
@@ -82,7 +91,7 @@ impl ProcessWrapper {
             ColorSpace::CIELAB => converter::<Lab>,
         });
 
-        Self(match calc_unit {
+        let inner: Arc<dyn Process + Sync + Send + 'static> = match calc_unit {
             CalculationUnit::Average => {
                 Arc::new(AverageImpl::new(size, filter, converter, distance))
             }
@@ -95,12 +104,38 @@ impl ProcessWrapper {
                 distance,
                 color_space,
             )),
-        })
+        };
+
+        if video {
+            let (iter, info) = Transcode::new(input, output);
+            (
+                Self {
+                    iter: Box::new(iter),
+                    inner,
+                    buf: ImageBuffer::new(info.1, info.2),
+                    lib: None,
+                    masks: None,
+                },
+                info,
+            )
+        } else {
+            let (iter, info) = ImageDump::new(input, output);
+            (
+                Self {
+                    iter: Box::new(iter),
+                    inner,
+                    buf: ImageBuffer::new(info.1, info.2),
+                    lib: None,
+                    masks: None,
+                },
+                info,
+            )
+        }
     }
 
     #[inline(always)]
     fn inner(&self) -> Arc<dyn Process + Sync + Send + 'static> {
-        self.0.clone()
+        self.inner.clone()
     }
 
     #[inline(always)]
@@ -124,21 +159,63 @@ impl ProcessWrapper {
     }
 
     #[inline(always)]
-    pub fn fill(
-        &self,
-        img: Arc<RgbImage>,
-        lib: Arc<Vec<LibItem>>,
-        masks: &Vec<Mask>,
-    ) -> Tasks<(Mask, Arc<RgbImage>)> {
-        masks
-            .iter()
-            .map(|&mask| {
-                let img = img.clone();
-                let lib = lib.clone();
-                let inner = self.inner();
-                spawn_blocking(move || inner.fill_step(img, mask, lib))
-            })
-            .collect::<Vec<_>>()
+    pub fn pre_fill(&mut self, lib: Arc<Vec<LibItem>>) {
+        self.lib = Some(lib);
+        self.masks = Some(self.mask());
+    }
+
+    #[inline(always)]
+    pub fn fill(&mut self) -> Option<Tasks<(Mask, Arc<RgbImage>)>> {
+        let lib = self.lib.as_ref().unwrap();
+        match self.iter.next() {
+            Some(img) => Some(
+                self.masks
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .map(|&mask| {
+                        let img = img.clone();
+                        let lib = lib.clone();
+                        let inner = self.inner();
+                        spawn_blocking(move || inner.fill_step(img, mask, lib))
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+            None => {
+                self.iter.flush();
+                None
+            }
+        }
+    }
+
+    #[inline(always)]
+    pub fn post_fill_step(&mut self, (x, y, w, h): Mask, replace: Arc<RgbImage>) {
+        for j in 0..h {
+            for i in 0..w {
+                let p = replace.get_pixel(i, j);
+                self.buf.put_pixel(i + x, j + y, *p);
+            }
+        }
+    }
+
+    #[inline(always)]
+    pub fn post_fill(&mut self) {
+        self.iter.post_next(&self.buf)
+    }
+
+    #[inline(always)]
+    fn mask(&self) -> Vec<Mask> {
+        let size = self.inner.size();
+        let (width, height) = self.buf.dimensions();
+        let mut mask = Vec::with_capacity((((width / size) + 1) * ((height / size) + 1)) as usize);
+        for y in (0..height).step_by(size as usize) {
+            for x in (0..width).step_by(size as usize) {
+                let w = size.min(width - x);
+                let h = size.min(height - y);
+                mask.push((x, y, w, h));
+            }
+        }
+        mask
     }
 }
 
@@ -146,20 +223,6 @@ impl fmt::Debug for ProcessWrapper {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("").field(&"Process").finish()
     }
-}
-
-#[inline(always)]
-pub fn mask(size: u32, img: &RgbImage) -> Vec<Mask> {
-    let (width, height) = img.dimensions();
-    let mut mask = Vec::with_capacity((((width / size) + 1) * ((height / size) + 1)) as usize);
-    for y in (0..height).step_by(size as usize) {
-        for x in (0..width).step_by(size as usize) {
-            let w = size.min(width - x);
-            let h = size.min(height - y);
-            mask.push((x, y, w, h));
-        }
-    }
-    mask
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -216,27 +279,26 @@ impl From<Filter> for FilterType {
 
 #[cfg(test)]
 mod tests {
+    use crate::ProcessWrapper;
     use {
         async_std::task::block_on,
-        image::{self, ImageBuffer, RgbImage},
         std::{fs::read_dir, path::PathBuf, sync::Arc},
     };
 
-    #[test]
-    fn process() {
-        let size = 50;
-        let k = 1;
-        let hamerly = false;
-        let proc = super::ProcessWrapper::new(super::ProcessConfig {
-            size,
-            k,
-            hamerly,
+    fn config() -> super::ProcessConfig {
+        super::ProcessConfig {
+            size: 50,
+            k: 1,
+            hamerly: false,
             calc_unit: crate::CalculationUnit::Average,
             color_space: crate::ColorSpace::CIELAB,
             dist_algo: crate::DistanceAlgorithm::CIEDE2000,
             filter: super::Filter::Nearest,
-        });
-        let library = read_dir("../image_crawler/test")
+        }
+    }
+
+    fn lib() -> Vec<PathBuf> {
+        read_dir("../image_crawler/test")
             .unwrap()
             .filter_map(|res| match res.as_ref() {
                 Ok(entry) => {
@@ -253,7 +315,12 @@ mod tests {
                 }
                 _ => None,
             })
-            .collect::<Vec<_>>();
+            .collect::<Vec<_>>()
+    }
+
+    fn process(mut proc: ProcessWrapper) {
+        let library = lib();
+
         block_on(async move {
             let mut lib = Vec::with_capacity(library.len());
             let tasks = proc.index(&library);
@@ -264,26 +331,43 @@ mod tests {
             }
             let lib = Arc::new(lib);
 
-            let img = Arc::new(
-                image::open(PathBuf::from("../static/images/testdata.jpg"))
-                    .unwrap()
-                    .into_rgb8(),
-            );
-            let masks = super::ProcessWrapper::mask(size as u32, &img);
-            let (width, height) = img.dimensions();
-
-            let tasks = proc.fill(img, lib, &masks);
-            let mut img_buf: RgbImage = ImageBuffer::new(width, height);
-            for task in tasks {
-                let ((x, y, w, h), replace) = task.await;
-                for j in 0..h {
-                    for i in 0..w {
-                        let p = replace.get_pixel(i, j);
-                        img_buf.put_pixel(i + x, j + y, *p);
-                    }
+            proc.pre_fill(lib);
+            while let Some(tasks) = proc.fill() {
+                for task in tasks {
+                    let (mask, replace) = task.await;
+                    proc.post_fill_step(mask, replace);
                 }
+                proc.post_fill();
             }
-            img_buf.save("test.png").unwrap();
         });
+    }
+
+    #[test]
+    fn image_process() {
+        let config = config();
+        let (proc, _) = super::ProcessWrapper::new(
+            config,
+            "../static/images/testdata.jpg".to_string(),
+            "test.png".to_string(),
+            false,
+        );
+
+        process(proc);
+    }
+
+    #[test]
+    fn video_process() {
+        crate::init().unwrap();
+        ffmpeg::log::set_level(ffmpeg::log::Level::Info);
+
+        let config = config();
+        let (proc, _) = super::ProcessWrapper::new(
+            config,
+            "../static/videos/testdata.mp4".to_string(),
+            "test.mp4".to_string(),
+            true,
+        );
+
+        process(proc);
     }
 }
