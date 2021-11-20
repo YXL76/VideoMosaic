@@ -4,6 +4,7 @@ use {
         streams::{crawler, process},
         styles::Theme,
     },
+    iced::image::Handle,
     image_diff::ProcessConfig,
     std::{collections::HashMap, path::PathBuf},
 };
@@ -19,6 +20,7 @@ pub struct State {
 
     pub target_type: TargetType,
     pub target_path: PathBuf,
+    pub target_preview: Option<Handle>,
 
     pub libraries: HashMap<PathBuf, Vec<PathBuf>>,
     pub pending: Vec<(String, String)>,

@@ -6,10 +6,8 @@ use {
         widgets::{btn_icon, btn_text, pri_btn},
     },
     iced::{
-        alignment, button, image, scrollable, Column, Element, Image, Length, Row, Scrollable,
-        Space, Text,
+        alignment, button, scrollable, Column, Element, Image, Length, Row, Scrollable, Space, Text,
     },
-    image_diff::first_frame,
 };
 
 #[derive(Default)]
@@ -61,19 +59,12 @@ impl<'a> Step<'a> for ChooseTarget {
             .height(Length::Fill)
             .style(state.theme)
             .align_items(alignment::Alignment::Center);
-        let path = state.target_path.to_str().unwrap_or("");
-        match state.target_type {
-            TargetType::Image => {
-                right_side = right_side.push(Image::new(path)).push(Text::new(path))
-            }
-            TargetType::Video => {
-                if let Ok((width, height, pixels)) = first_frame(&state.target_path) {
-                    let img = image::Handle::from_pixels(width, height, pixels);
-                    right_side = right_side.push(Image::new(img)).push(Text::new(path));
-                }
-            }
-            _ => (),
-        };
+        if let Some(img) = state.target_preview.as_ref() {
+            right_side = right_side
+                .push(Image::new(img.clone()))
+                .push(Text::new(state.target_path.to_str().unwrap_or("")));
+        }
+
         Row::new()
             .spacing(spacings::_4)
             .push(left_side)

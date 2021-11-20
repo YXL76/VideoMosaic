@@ -6,10 +6,11 @@ mod widgets;
 
 use {
     iced::{
-        button, executor, window, Application, Column, Command, Container, Element, Length, Row,
-        Settings, Space, Subscription, Text,
+        button, executor, image::Handle, window, Application, Column, Command, Container, Element,
+        Length, Row, Settings, Space, Subscription, Text,
     },
     iced_native::subscription,
+    image_diff::first_frame,
     rfd::{AsyncMessageDialog, FileDialog, MessageButtons, MessageDialog, MessageLevel},
     states::{State, EN, IMAGE_FILTER, VIDEO_FILTER, ZH_CN},
     std::{
@@ -123,6 +124,16 @@ impl<'a> Application for MosaicVideo<'a> {
                         state.target_type = target_type;
                     } else {
                         state.target_type = TargetType::None;
+                    }
+                    state.target_preview = match state.target_type {
+                        TargetType::Image => Some(Handle::from_path(&state.target_path)),
+                        TargetType::Video => match first_frame(&state.target_path) {
+                            Ok((width, height, pixels)) => {
+                                Some(Handle::from_pixels(width, height, pixels))
+                            }
+                            Err(_) => None,
+                        },
+                        TargetType::None => None,
                     }
                 }
 
