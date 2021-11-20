@@ -120,7 +120,7 @@ jobs:
         if: runner.os == 'Linux'
 
       - name: Install dependencies
-        run: brew install ffmpeg pkg-config
+        run: brew install automake ffmpeg fdk-aac freetype glib lame libass libtool libvorbis libvpx nasm opus pkg-config rubberband sdl shtool texi2html theora wget x264 x265 xvid
         if: runner.os == 'macOS'
 
       - name: Install dependencies
