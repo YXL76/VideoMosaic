@@ -22,6 +22,7 @@ pub mod spacings {
     pub const _6: u16 = 4 * 6;
     pub const _8: u16 = 4 * 8;
     pub const _10: u16 = 4 * 10;
+    pub const _11: u16 = 4 * 11;
     pub const _12: u16 = 4 * 12;
     pub const _16: u16 = 4 * 16;
     pub const _24: u16 = 4 * 24;

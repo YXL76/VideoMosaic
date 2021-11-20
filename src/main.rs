@@ -330,42 +330,42 @@ impl<'a> Application for MosaicVideo<'a> {
         let next_i = btn_icon(" \u{f142}");
         let next_l = btn_text(state.i18n.next);
         let btn_w = spacings::_24;
-        let control_items: Option<[Element<_>; 3]> =
-            match (steps.can_back(state), steps.can_next(state)) {
-                (true, true) => Some([
-                    sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
-                        .on_press(Message::BackPressed)
-                        .into(),
-                    Space::with_width(Length::Units(10)).into(),
-                    pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
-                        .on_press(Message::NextPressed)
-                        .into(),
-                ]),
+        let control_items: [Element<_>; 3] = match (steps.can_back(state), steps.can_next(state)) {
+            (true, true) => [
+                sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
+                    .on_press(Message::BackPressed)
+                    .into(),
+                Space::with_width(Length::Units(10)).into(),
+                pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
+                    .on_press(Message::NextPressed)
+                    .into(),
+            ],
 
-                (true, false) => Some([
-                    sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
-                        .on_press(Message::BackPressed)
-                        .into(),
-                    Space::with_width(Length::Units(10)).into(),
-                    Space::with_width(Length::Units(btn_w)).into(),
-                ]),
+            (true, false) => [
+                sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
+                    .on_press(Message::BackPressed)
+                    .into(),
+                Space::with_width(Length::Units(10)).into(),
+                Space::with_width(Length::Units(btn_w)).into(),
+            ],
 
-                (false, true) => Some([
-                    Space::with_width(Length::Units(10)).into(),
-                    Space::with_width(Length::Units(btn_w)).into(),
-                    pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
-                        .on_press(Message::NextPressed)
-                        .into(),
-                ]),
+            (false, true) => [
+                Space::with_width(Length::Units(10)).into(),
+                Space::with_width(Length::Units(btn_w)).into(),
+                pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
+                    .on_press(Message::NextPressed)
+                    .into(),
+            ],
 
-                (false, false) => None,
-            };
-        let mut controls = Row::new();
-        if let Some(items) = control_items {
-            for item in items {
-                controls = controls.push(item);
-            }
-        }
+            (false, false) => [
+                Space::with_width(Length::Units(0)).into(),
+                Space::with_height(Length::Units(spacings::_11)).into(),
+                Space::with_width(Length::Units(0)).into(),
+            ],
+        };
+        let controls = control_items
+            .into_iter()
+            .fold(Row::new(), |row, items| row.push(items));
 
         let content = Column::new()
             .max_width(1024)
