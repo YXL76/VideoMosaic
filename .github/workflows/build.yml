@@ -25,17 +25,122 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
+            target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang curl pkg-config
+          sudo apt-get install -y --no-install-recommends \
+            asciidoc \
+            autoconf \
+            automake \
+            build-essential \
+            clang \
+            cmake \
+            curl \
+            flite1-dev \
+            libaom-dev \
+            libass-dev \
+            libavc1394-dev \
+            libavcodec-dev \
+            libavdevice-dev \
+            libavfilter-dev \
+            libavformat-dev \
+            libavresample-dev \
+            libavutil-dev \
+            libbluray-dev \
+            libbs2b-dev \
+            libcdio-cdda-dev \
+            libcdio-dev \
+            libcdio-paranoia-dev \
+            libcdparanoia-dev \
+            libchromaprint-dev \
+            libcodec2-dev \
+            libczmq-dev \
+            libdc1394-dev \
+            libdrm-dev \
+            libfdk-aac-dev \
+            libfontconfig-dev \
+            libfreetype6-dev \
+            libgme-dev \
+            libgnutls28-dev \
+            libgsm1-dev \
+            libgtk-3-dev \
+            libiec61883-dev \
+            libjack-dev \
+            liblilv-dev \
+            libmp3lame-dev \
+            libmysofa-dev \
+            libnuma-dev \
+            libopenal-dev \
+            libopenjp2-7-dev \
+            libopenmpt-dev \
+            libopus-dev \
+            libraw1394-dev \
+            librubberband-dev \
+            libsdl2-dev \
+            libsdl-pango-dev \
+            libshine-dev \
+            libsnappy-dev \
+            libsord-dev \
+            libsoxr-dev \
+            libspeex-dev \
+            libsratom-dev \
+            libssh-dev \
+            libswresample-dev \
+            libswscale-dev \
+            libtheora-dev \
+            libtool \
+            libtwolame-dev \
+            libunistring-dev \
+            libva-dev \
+            libvdpau-dev \
+            libvidstab-dev \
+            libvorbis-dev \
+            libvpx-dev \
+            libwavpack-dev \
+            libwebpmux3 \
+            libwebp-dev \
+            libx11-dev \
+            libx264-dev \
+            libx265-dev \
+            libxcb1-dev \
+            libxcb-shm0-dev \
+            libxcb-xfixes0-dev \
+            libxext-dev \
+            libxkbcommon-dev \
+            libexpat1-dev \
+            libxv-dev \
+            libxvidcore-dev \
+            libzvbi-dev \
+            meson \
+            nasm \
+            ocl-icd-opencl-dev \
         if: runner.os == 'Linux'
 
       - name: Install dependencies
         run: brew install ffmpeg pkg-config
         if: runner.os == 'macOS'
+
+      - name: Install dependencies
+        run: |
+          $VCINSTALLDIR = $(& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath)
+          Add-Content $env:GITHUB_ENV "LIBCLANG_PATH=${VCINSTALLDIR}\VC\Tools\LLVM\x64\bin`n"
+          Invoke-WebRequest "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full-shared.7z" -OutFile ffmpeg-release-full-shared.7z
+          7z x ffmpeg-release-full-shared.7z
+          mkdir ffmpeg
+          mv ffmpeg-*/* ffmpeg/
+          Add-Content $env:GITHUB_ENV "FFMPEG_DIR=${pwd}\ffmpeg`n"
+          Add-Content $env:GITHUB_PATH "${pwd}\ffmpeg\bin`n"
+        if: runner.os == 'Windows'
+
+      - name: Enable static CRT linkage
+        run: |
+          mkdir .cargo
+          echo '[target.x86_64-pc-windows-msvc]' >> .cargo/config
+          echo 'rustflags = ["-Ctarget-feature=+crt-static"]' >> .cargo/config
+        if: runner.os == 'Windows'
 
       - name: Install latest nightly
         uses: actions-rs/toolchain@v1
