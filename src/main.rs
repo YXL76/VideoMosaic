@@ -126,13 +126,9 @@ impl<'a> Application for MosaicVideo<'a> {
                         state.target_type = TargetType::None;
                     }
                     state.target_preview = match state.target_type {
-                        TargetType::Image => Some(Handle::from_path(&state.target_path)),
-                        TargetType::Video => match first_frame(&state.target_path) {
-                            Ok((width, height, pixels)) => {
-                                Some(Handle::from_pixels(width, height, pixels))
-                            }
-                            Err(_) => None,
-                        },
+                        TargetType::Image | TargetType::Video => {
+                            path2handle(&state.target_path, state.target_type == TargetType::Video)
+                        }
                         TargetType::None => None,
                     }
                 }
@@ -248,10 +244,11 @@ impl<'a> Application for MosaicVideo<'a> {
                             });
 
                     state.clear();
+                    state.result_path = path;
                     state.process = Some(process::Process::new(
                         state.config,
                         state.target_path.to_string_lossy().to_string(),
-                        path.to_string_lossy().to_string(),
+                        state.result_path.to_string_lossy().to_string(),
                         video,
                         library,
                     ))
@@ -268,13 +265,15 @@ impl<'a> Application for MosaicVideo<'a> {
                     process::Progress::Filling => state.percentage[1] += state.step[1],
                     process::Progress::Filled => {
                         state.percentage[1] = 0.;
-                        state.percentage[2] += state.step[2]
+                        state.percentage[2] += state.step[2];
                     }
                     process::Progress::Finished => {
+                        info_dialog(state.i18n.info, state.i18n.saved_to_local.into());
                         state.percentage[1] = 100.;
                         state.percentage[2] = 100.;
                         state.process = None;
-                        info_dialog(state.i18n.info, state.i18n.saved_to_local.into())
+                        state.result_preview =
+                            path2handle(&state.result_path, state.target_type == TargetType::Video);
                     }
                     process::Progress::Error => error_dialog(state.i18n.error, "".into()),
                     process::Progress::None => (),
@@ -441,6 +440,24 @@ impl MosaicVideo<'_> {
             .show()
         {
             self.should_exit = true;
+        }
+    }
+}
+
+fn path2handle(path: &PathBuf, video: bool) -> Option<Handle> {
+    if video {
+        match first_frame(path) {
+            Ok((width, height, pixels)) => Some(Handle::from_pixels(width, height, pixels)),
+            Err(_) => None,
+        }
+    } else {
+        match image::open(path) {
+            Ok(img) => {
+                let img = img.into_bgra8();
+                let (width, height) = img.dimensions();
+                Some(Handle::from_pixels(width, height, img.into_raw()))
+            }
+            Err(_) => None,
         }
     }
 }

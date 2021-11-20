@@ -32,6 +32,8 @@ pub struct State {
     pub step: [f32; 3],
     pub percentage: [f32; 3],
     pub process: Option<process::Process>,
+    pub result_path: PathBuf,
+    pub result_preview: Option<Handle>,
 }
 
 impl State {
@@ -45,6 +47,7 @@ impl State {
         self.percentage[0] = 0.;
         self.percentage[1] = 0.;
         self.percentage[2] = 0.;
+        self.result_preview = None;
     }
 }
 

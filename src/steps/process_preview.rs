@@ -7,8 +7,8 @@ use {
         widgets::{btn_icon, btn_text, pri_btn},
     },
     iced::{
-        button, scrollable, Alignment, Column, Element, Length, ProgressBar, Row, Rule, Scrollable,
-        Text,
+        button, scrollable, Alignment, Column, Element, Image, Length, ProgressBar, Row, Rule,
+        Scrollable, Text,
     },
 };
 
@@ -69,7 +69,8 @@ impl<'a> Step<'a> for ProcessPreview {
             },
         );
 
-        Scrollable::new(scroll)
+        let mut container = Scrollable::new(scroll)
+            .spacing(spacings::_6)
             .push(
                 Row::new()
                     .spacing(spacings::_8)
@@ -80,7 +81,15 @@ impl<'a> Step<'a> for ProcessPreview {
             )
             .push(Rule::horizontal(spacings::_16).style(state.theme))
             .height(Length::Fill)
-            .style(state.theme)
-            .into()
+            .align_items(Alignment::Center)
+            .style(state.theme);
+
+        if let Some(img) = state.result_preview.as_ref() {
+            container = container
+                .push(Image::new(img.clone()).width(Length::Fill))
+                .push(Text::new(state.result_path.to_str().unwrap_or("")));
+        }
+
+        container.into()
     }
 }
