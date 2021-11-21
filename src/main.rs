@@ -10,6 +10,7 @@ use {
         Length, Row, Settings, Space, Subscription, Text,
     },
     iced_native::subscription,
+    image::{load_from_memory_with_format, ImageFormat},
     image_diff::first_frame,
     rfd::{AsyncMessageDialog, FileDialog, MessageButtons, MessageDialog, MessageLevel},
     states::{State, EN, IMAGE_FILTER, VIDEO_FILTER, ZH_CN},
@@ -27,13 +28,21 @@ use {
 
 pub fn main() -> iced::Result {
     image_diff::init().unwrap();
+    let icon = load_from_memory_with_format(
+        include_bytes!("../static/images/icon.jpg"),
+        ImageFormat::Jpeg,
+    )
+    .unwrap()
+    .into_rgba8()
+    .into_raw();
     MosaicVideo::run(Settings {
         window: window::Settings {
             position: window::Position::Centered,
             decorations: false,
+            icon: Some(window::Icon::from_rgba(icon, 600, 600).unwrap()),
             ..window::Settings::default()
         },
-        text_multithreading: true,
+        text_multithreading: false,
         antialiasing: false,
         ..Settings::default()
     })
