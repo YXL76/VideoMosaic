@@ -1,19 +1,16 @@
 use {
     crate::states::IMAGE_FILTER,
-    anyhow::Result,
-    async_std::task::JoinHandle,
     iced::{
         futures::stream::{unfold, BoxStream},
         Subscription,
     },
     iced_native::subscription,
-    image_crawler::{download_urls, gen_client, get_urls, HttpClient},
+    image_crawler::{download_urls, gen_client, get_urls, HttpClient, Result, TasksIter},
     std::{
         any::TypeId,
         hash::{Hash, Hasher},
         path::PathBuf,
         sync::Arc,
-        vec::IntoIter,
     },
 };
 
@@ -149,10 +146,10 @@ enum State {
     Ready(Arc<HttpClient>, String, usize, PathBuf),
     Getting(
         Arc<HttpClient>,
-        IntoIter<JoinHandle<Result<Vec<String>>>>,
+        TasksIter<Result<Vec<String>>>,
         Vec<String>,
         PathBuf,
     ),
-    Downloading(IntoIter<JoinHandle<Result<bool>>>, bool),
+    Downloading(TasksIter<Result<bool>>, bool),
     Finished,
 }

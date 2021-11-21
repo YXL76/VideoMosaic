@@ -1,18 +1,16 @@
 use {
-    async_std::task::JoinHandle,
     iced::{
         futures::stream::{unfold, BoxStream},
         Subscription,
     },
     iced_native::subscription,
     image::RgbImage,
-    image_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper},
+    image_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper, TasksIter},
     std::{
         any::TypeId,
         hash::{Hash, Hasher},
         path::PathBuf,
         sync::Arc,
-        vec::IntoIter,
     },
 };
 
@@ -142,11 +140,7 @@ pub enum Progress {
 enum State {
     Ready(ProcessConfig, String, String, bool, Arc<Vec<PathBuf>>),
     Start(ProcessWrapper, Arc<Vec<PathBuf>>),
-    Indexing(
-        ProcessWrapper,
-        IntoIter<JoinHandle<Option<LibItem>>>,
-        Vec<LibItem>,
-    ),
-    Filling(ProcessWrapper, IntoIter<JoinHandle<(Mask, Arc<RgbImage>)>>),
+    Indexing(ProcessWrapper, TasksIter<Option<LibItem>>, Vec<LibItem>),
+    Filling(ProcessWrapper, TasksIter<(Mask, Arc<RgbImage>)>),
     Finished,
 }

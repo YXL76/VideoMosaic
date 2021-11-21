@@ -70,6 +70,7 @@ impl<'a> Step<'a> for ProcessPreview {
         );
 
         let mut container = Scrollable::new(scroll)
+            .padding(spacings::_6)
             .spacing(spacings::_6)
             .push(
                 Row::new()

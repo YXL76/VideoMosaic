@@ -1590,6 +1590,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-std",
+ "futures",
  "http",
  "isahc",
  "mime",
@@ -1604,6 +1605,7 @@ dependencies = [
  "anyhow",
  "async-std",
  "ffmpeg-next",
+ "futures",
  "image",
  "kmeans_colors",
  "palette",
@@ -1934,7 +1936,6 @@ dependencies = [
 name = "mosaic_video"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-std",
  "iced",
  "iced_native",

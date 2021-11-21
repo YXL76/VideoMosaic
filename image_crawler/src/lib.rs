@@ -1,11 +1,11 @@
 use {
-    anyhow::Result,
     async_std::{
         fs::File,
         future::timeout,
         io::WriteExt,
         task::{spawn, JoinHandle},
     },
+    futures::stream::{futures_unordered, FuturesUnordered},
     http::{Method, Uri},
     isahc::{config::VersionNegotiation, prelude::*, Request},
     mime::Mime,
@@ -14,9 +14,12 @@ use {
     urlencoding::encode,
 };
 
-pub use isahc::HttpClient;
+pub use {anyhow::Result, isahc::HttpClient};
 
 type PARAMS = [(&'static str, Cow<'static, str>); 10];
+type Task<T> = JoinHandle<T>;
+type Tasks<T> = FuturesUnordered<Task<T>>;
+pub type TasksIter<T> = futures_unordered::IntoIter<Task<T>>;
 
 const BASE_URL: &str = "https://image.baidu.com/search/acjson";
 const PAGE_NUM: usize = 50;
@@ -64,7 +67,7 @@ pub fn download_urls(
     urls: Vec<String>,
     filter: &'static [&str],
     folder: PathBuf,
-) -> Vec<JoinHandle<Result<bool>>> {
+) -> Tasks<Result<bool>> {
     urls.into_iter()
         .enumerate()
         .map(|(idx, url)| {
@@ -72,7 +75,7 @@ pub fn download_urls(
             let client = client.clone();
             spawn(download_url(client, url, filter, folder.clone(), idx))
         })
-        .collect::<Vec<_>>()
+        .collect::<FuturesUnordered<_>>()
 }
 
 async fn download_url(
@@ -111,7 +114,7 @@ pub async fn get_urls(
     client: Arc<HttpClient>,
     keyword: String,
     num: usize,
-) -> Result<(usize, Vec<JoinHandle<Result<Vec<String>>>>)> {
+) -> Result<(usize, Tasks<Result<Vec<String>>>)> {
     let keyword = encode(&keyword).to_string();
     let mut params = BASE_PARAMS.clone();
     params[0].1 = keyword.clone().into();
@@ -128,7 +131,7 @@ pub async fn get_urls(
             let client = client.clone();
             spawn(get_part_urls(client, start.to_string(), params.clone()))
         })
-        .collect::<Vec<_>>();
+        .collect::<FuturesUnordered<_>>();
 
     Ok((num, tasks))
 }

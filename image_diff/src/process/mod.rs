@@ -9,6 +9,7 @@ use {
     },
     async_std::task::{spawn_blocking, JoinHandle},
     average::AverageImpl,
+    futures::stream::{futures_unordered, FuturesUnordered},
     image::{imageops::FilterType, ImageBuffer, RgbImage},
     kmeans::KMeansImpl,
     palette::{Lab, Pixel},
@@ -17,7 +18,9 @@ use {
 };
 
 pub type Mask = (u32, u32, u32, u32);
-pub(crate) type Tasks<T> = Vec<JoinHandle<T>>;
+type Task<T> = JoinHandle<T>;
+type Tasks<T> = FuturesUnordered<Task<T>>;
+pub type TasksIter<T> = futures_unordered::IntoIter<Task<T>>;
 pub type LibItem = (Vec<RawColor>, Arc<RgbImage>);
 
 type Converter = Box<dyn Fn(&[u8; 3]) -> RawColor + Sync + Send>;
@@ -154,7 +157,7 @@ impl ProcessWrapper {
                     None
                 })
             })
-            .collect::<Vec<_>>()
+            .collect::<FuturesUnordered<_>>()
     }
 
     #[inline(always)]
@@ -178,7 +181,7 @@ impl ProcessWrapper {
                         let inner = self.inner();
                         spawn_blocking(move || inner.fill_step(img, mask, lib))
                     })
-                    .collect::<Vec<_>>(),
+                    .collect::<FuturesUnordered<_>>(),
             ),
             None => {
                 self.iter.flush();
