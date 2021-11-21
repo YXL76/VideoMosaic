@@ -9,7 +9,7 @@ use {
         media,
         util::frame::video::Video,
     },
-    std::path::PathBuf,
+    std::path::Path,
 };
 
 pub use {ffmpeg::Error, process::*, utils::*};
@@ -18,8 +18,8 @@ pub fn init() -> Result<(), ffmpeg::Error> {
     ffmpeg::init()
 }
 
-pub fn first_frame(filename: &PathBuf) -> Result<(u32, u32, Vec<u8>), ffmpeg::Error> {
-    let mut ictx = input(filename)?;
+pub fn first_frame(filename: &Path) -> Result<(u32, u32, Vec<u8>), ffmpeg::Error> {
+    let mut ictx = input(&filename)?;
     let input = ictx
         .streams()
         .best(media::Type::Video)

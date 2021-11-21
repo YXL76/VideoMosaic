@@ -14,9 +14,11 @@ use {
     },
 };
 
+type ProcessData = (ProcessConfig, String, String, bool, Arc<Vec<PathBuf>>);
+
 #[derive(Debug, Clone)]
 pub struct Process {
-    inner: Option<(ProcessConfig, String, String, bool, Arc<Vec<PathBuf>>)>,
+    inner: Option<ProcessData>,
 }
 
 impl Process {

@@ -454,7 +454,7 @@ impl MosaicVideo<'_> {
     }
 }
 
-fn path2handle(path: &PathBuf, video: bool) -> Option<Handle> {
+fn path2handle(path: &Path, video: bool) -> Option<Handle> {
     if video {
         match first_frame(path) {
             Ok((width, height, pixels)) => Some(Handle::from_pixels(width, height, pixels)),
