@@ -139,11 +139,10 @@ impl ProcessWrapper {
     }
 
     #[inline(always)]
-    pub fn index(&self, libraries: &[PathBuf]) -> Tasks<Option<LibItem>> {
+    pub fn index(&self, libraries: Vec<PathBuf>) -> Tasks<Option<LibItem>> {
         libraries
-            .iter()
+            .into_iter()
             .map(|lib| {
-                let lib = lib.clone();
                 let inner = self.inner();
                 spawn_blocking(move || {
                     if let Ok(img) = image::open(lib) {
@@ -323,7 +322,7 @@ mod tests {
 
         block_on(async move {
             let mut lib = Vec::with_capacity(library.len());
-            let tasks = proc.index(&library);
+            let tasks = proc.index(library);
             for task in tasks {
                 if let Some(i) = task.await {
                     lib.push(i);

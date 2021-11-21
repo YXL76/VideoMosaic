@@ -18,11 +18,7 @@ use {
 
 #[derive(Debug, Clone)]
 pub struct Process {
-    config: ProcessConfig,
-    input: String,
-    output: String,
-    video: bool,
-    library: Arc<Vec<PathBuf>>,
+    inner: Option<(ProcessConfig, String, String, bool, Arc<Vec<PathBuf>>)>,
 }
 
 impl Process {
@@ -35,17 +31,17 @@ impl Process {
         library: Vec<PathBuf>,
     ) -> Self {
         Self {
-            config,
-            input,
-            output,
-            video,
-            library: Arc::new(library),
+            inner: Some((config, input, output, video, Arc::new(library))),
         }
     }
 
     #[inline(always)]
     pub fn subscription(&self) -> Subscription<Progress> {
         Subscription::from_recipe(self.clone())
+    }
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        self.inner = None;
     }
 }
 
@@ -56,72 +52,77 @@ where
     type Output = Progress;
 
     fn hash(&self, state: &mut H) {
-        TypeId::of::<Self>().hash(state);
+        struct Marker;
+        TypeId::of::<Marker>().hash(state);
         0.hash(state);
     }
 
     fn stream(self: Box<Self>, _input: BoxStream<'static, E>) -> BoxStream<'static, Self::Output> {
-        Box::pin(unfold(State::Ready(self), move |state| async move {
-            match state {
-                State::Ready(s) => Some({
-                    let (proc, (cnt, width, height)) =
-                        ProcessWrapper::new(s.config, s.input, s.output, s.video);
+        let (config, input, output, video, library) = self.inner.unwrap();
+        Box::pin(unfold(
+            State::Ready(config, input, output, video, library),
+            move |state| async move {
+                match state {
+                    State::Ready(config, input, output, video, library) => Some({
+                        let (proc, (cnt, width, height)) =
+                            ProcessWrapper::new(config, input, output, video);
 
-                    let size = s.config.size as u32;
-                    (
-                        Progress::Started(
-                            s.library.len() as f32,
-                            ((width / size + 1) * (height / size + 1)) as f32,
-                            cnt as f32,
-                        ),
-                        State::Start(proc, s.library),
-                    )
-                }),
+                        let size = config.size as u32;
+                        (
+                            Progress::Started(
+                                library.len() as f32,
+                                ((width / size + 1) * (height / size + 1)) as f32,
+                                cnt as f32,
+                            ),
+                            State::Start(proc, library),
+                        )
+                    }),
 
-                State::Start(proc, library) => Some({
-                    let lib = Vec::with_capacity(library.len());
-                    let tasks = proc.index(&library).into_iter();
-                    (Progress::None, State::Indexing(proc, tasks, lib))
-                }),
+                    State::Start(proc, library) => Some({
+                        let lib = Vec::with_capacity(library.len());
+                        let tasks = proc.index(library.to_vec()).into_iter();
+                        (Progress::None, State::Indexing(proc, tasks, lib))
+                    }),
 
-                State::Indexing(mut proc, mut tasks, mut lib) => Some(match tasks.next() {
-                    Some(task) => {
-                        if let Some(i) = task.await {
-                            lib.push(i);
-                        }
-                        (Progress::Indexing, State::Indexing(proc, tasks, lib))
-                    }
-                    None => match lib.is_empty() {
-                        true => (Progress::Error, State::Finished),
-                        false => {
-                            proc.pre_fill(Arc::new(lib));
-                            let tasks = proc.fill().unwrap().into_iter();
-                            (Progress::Indexed, State::Filling(proc, tasks))
-                        }
-                    },
-                }),
-
-                State::Filling(mut proc, mut tasks) => Some(match tasks.next() {
-                    Some(task) => {
-                        let (mask, replace) = task.await;
-                        proc.post_fill_step(mask, replace);
-                        (Progress::Filling, State::Filling(proc, tasks))
-                    }
-                    None => {
-                        proc.post_fill();
-                        match proc.fill() {
-                            Some(tasks) => {
-                                let tasks = tasks.into_iter();
-                                (Progress::Filled, State::Filling(proc, tasks))
+                    State::Indexing(mut proc, mut tasks, mut lib) => Some(match tasks.next() {
+                        Some(task) => {
+                            if let Some(i) = task.await {
+                                lib.push(i);
                             }
-                            None => (Progress::Finished, State::Finished),
+                            (Progress::Indexing, State::Indexing(proc, tasks, lib))
                         }
-                    }
-                }),
+                        None => match lib.is_empty() {
+                            true => (Progress::Error, State::Finished),
+                            false => {
+                                proc.pre_fill(Arc::new(lib));
+                                let tasks = proc.fill().unwrap().into_iter();
+                                (Progress::Indexed, State::Filling(proc, tasks))
+                            }
+                        },
+                    }),
 
-                State::Finished => None,
-            }
-        }))
+                    State::Filling(mut proc, mut tasks) => Some(match tasks.next() {
+                        Some(task) => {
+                            let (mask, replace) = task.await;
+                            proc.post_fill_step(mask, replace);
+                            (Progress::Filling, State::Filling(proc, tasks))
+                        }
+                        None => {
+                            proc.post_fill();
+                            match proc.fill() {
+                                Some(tasks) => {
+                                    let tasks = tasks.into_iter();
+                                    (Progress::Filled, State::Filling(proc, tasks))
+                                }
+                                None => (Progress::Finished, State::Finished),
+                            }
+                        }
+                    }),
+
+                    State::Finished => None,
+                }
+            },
+        ))
     }
 }
 
@@ -139,7 +140,7 @@ pub enum Progress {
 
 #[derive(Debug)]
 enum State {
-    Ready(Box<Process>),
+    Ready(ProcessConfig, String, String, bool, Arc<Vec<PathBuf>>),
     Start(ProcessWrapper, Arc<Vec<PathBuf>>),
     Indexing(
         ProcessWrapper,
