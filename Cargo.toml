@@ -13,7 +13,6 @@ repository = "https://github.com/YXL76/MosaicVideo"
 [dependencies]
 anyhow = "1.0"
 async-std = "1.10"
-image = "0.23"
 image_crawler = { path = "image_crawler" }
 image_diff = { path = "image_diff" }
 itertools = "0.10"
@@ -25,6 +24,11 @@ features = ["image", "async-std"]
 
 [dependencies.iced_native]
 git = "https://github.com/iced-rs/iced"
+
+[dependencies.image]
+version = "0.23"
+default-features = false
+features = ["jpeg", "png"] # "jpeg_rayon" may cause stack overflow
 
 [profile.release]
 lto = true
