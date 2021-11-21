@@ -26,7 +26,7 @@ features = ["image", "async-std"]
 [dependencies.iced_native]
 git = "https://github.com/iced-rs/iced"
 
-[profile.release]
+[profile.release.'cfg(not(target_os = "macos"))']
 lto = true
 
 [workspace]
