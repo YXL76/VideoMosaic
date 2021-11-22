@@ -9,7 +9,11 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            path: target/release/mosaic_video
+          - os: windows-latest
+            path: target/release/mosaic_video.exe
 
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -17,6 +21,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
 
       - uses: actions/cache@v2
         with:
@@ -35,25 +45,14 @@ jobs:
             asciidoc \
             clang \
             cmake \
-            flite1-dev \
             libaom-dev \
-            libass-dev \
             libavc1394-dev \
             libavcodec-dev \
-            libavdevice-dev \
-            libavfilter-dev \
             libavformat-dev \
-            libavresample-dev \
             libavutil-dev \
             libbluray-dev \
-            libbs2b-dev \
-            libcdio-cdda-dev \
-            libcdio-dev \
-            libcdio-paranoia-dev \
-            libcdparanoia-dev \
             libchromaprint-dev \
             libcodec2-dev \
-            libczmq-dev \
             libdc1394-dev \
             libdrm-dev \
             libfdk-aac-dev \
@@ -61,13 +60,8 @@ jobs:
             libgnutls28-dev \
             libgsm1-dev \
             libgtk-3-dev \
-            libiec61883-dev \
-            libjack-dev \
             liblilv-dev \
             libmp3lame-dev \
-            libmysofa-dev \
-            libnuma-dev \
-            libopenal-dev \
             libopenjp2-7-dev \
             libopenmpt-dev \
             libopus-dev \
@@ -77,29 +71,23 @@ jobs:
             libsdl-pango-dev \
             libshine-dev \
             libsnappy-dev \
-            libsord-dev \
             libsoxr-dev \
             libspeex-dev \
             libsratom-dev \
             libssh-dev \
-            libswresample-dev \
             libswscale-dev \
             libtheora-dev \
             libtwolame-dev \
             libunistring-dev \
             libva-dev \
             libvdpau-dev \
-            libvidstab-dev \
             libvorbis-dev \
             libvpx-dev \
             libwavpack-dev \
             libwebp-dev \
             libx264-dev \
             libx265-dev \
-            libxcb-xfixes0-dev \
-            libxext-dev \
             libxkbcommon-dev \
-            libxv-dev \
             libxvidcore-dev \
             libzvbi-dev \
             meson \
@@ -108,54 +96,27 @@ jobs:
         if: runner.os == 'Linux'
 
       - name: Install dependencies
-        run: brew install automake ffmpeg fdk-aac nasm shtool texi2html
-        if: runner.os == 'macOS'
-
-      - name: Install dependencies
-        run: |
-          brew uninstall --ignore-dependencies rubberband
-          brew extract --version=1.9.2 rubberband homebrew/cask
-          brew install rubberband@1.9.2
-        if: runner.os == 'macOS'
-
-      - name: Install dependencies
         run: |
           $VCINSTALLDIR = $(& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath)
           Add-Content $env:GITHUB_ENV "LIBCLANG_PATH=${VCINSTALLDIR}\VC\Tools\LLVM\x64\bin`n"
-          Invoke-WebRequest "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full-shared.7z" -OutFile ffmpeg-release-full-shared.7z
-          7z x ffmpeg-release-full-shared.7z
-          mkdir ffmpeg
-          mv ffmpeg-*/* ffmpeg/
-          Add-Content $env:GITHUB_ENV "FFMPEG_DIR=${pwd}\ffmpeg`n"
-          Add-Content $env:GITHUB_PATH "${pwd}\ffmpeg\bin`n"
+          vcpkg integrate install
+          vcpkg install ffmpeg[core,avcodec,avformat,swscale]:x64-windows-static
         if: runner.os == 'Windows'
-
-      - name: Enable static CRT linkage
-        run: |
-          mkdir .cargo
-          echo '[target.x86_64-pc-windows-msvc]' >> .cargo/config
-          echo 'rustflags = ["-Ctarget-feature=+crt-static"]' >> .cargo/config
-        if: runner.os == 'Windows'
-
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
 
       - name: Build
-        env:
-          MACOSX_DEPLOYMENT_TARGET: 10.14
         run: cargo build --release
 
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ runner.os }}-x64
-          path: target/release/mosaic_video
-        if: runner.os != 'Windows'
+          path: target/release/mosaic_video.exe
 
+  build-on-linux:
+    name: Build on Linux
+    runs-on: ubuntu-latest
+
+    steps:
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ runner.os }}-x64
-          path: target/release/mosaic_video.exe
-        if: runner.os == 'Windows'
+          path: ${{ matrix.path }}
