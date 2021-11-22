@@ -141,10 +141,11 @@ impl<'a> Step<'a> for ChooseMethod {
                     .spacing(spacings::_6)
                     .push(Text::new(format!(
                         "{}: {}",
-                        state.i18n.size, state.config.size
+                        state.i18n.size,
+                        state.config.size * 10
                     )))
                     .push(
-                        Slider::new(size_slider, 50..=300, state.config.size, StepMessage::Size)
+                        Slider::new(size_slider, 3..=30, state.config.size, StepMessage::Size)
                             .style(state.theme),
                     ),
             );
