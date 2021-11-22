@@ -87,7 +87,7 @@ pub struct I18n {
     pub configuration: &'static str,
     pub size: &'static str,
 
-    pub process: &'static str,
+    pub process_preview: &'static str,
     pub start: &'static str,
     pub index: &'static str,
     pub fill: &'static str,
@@ -137,7 +137,7 @@ pub const EN: I18n = I18n {
     configuration: "Configuration",
     size: "Size",
 
-    process: "Process",
+    process_preview: "Process & Preview",
     start: "Start",
     index: "Index",
     fill: "Fill",
@@ -181,7 +181,7 @@ pub const ZH_CN: I18n = I18n {
     configuration: "配置",
     size: "大小",
 
-    process: "处理",
+    process_preview: "处理并预览",
     start: "开始",
     index: "建立索引",
     fill: "填充图片",

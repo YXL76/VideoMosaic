@@ -3,7 +3,7 @@ use {
     crate::{
         states::{State, LIBRARY_BTN_CNT},
         styles::spacings,
-        widgets::{btn_icon, btn_text, pri_btn, rou_btn, tra_btn},
+        widgets::{pri_btn, rou_btn, tra_btn},
     },
     iced::{
         button, scrollable, text_input, Column, Container, Element, Length, ProgressBar, Row,
@@ -90,13 +90,8 @@ impl<'a> Step<'a> for ChooseLibrary {
                         .size(spacings::_8),
                     )
                     .push(
-                        rou_btn(
-                            delete,
-                            btn_icon("\u{f5e8}"),
-                            spacings::_10,
-                            state.theme.danger_btn(),
-                        )
-                        .on_press(StepMessage::DeleteCrawler(idx)),
+                        rou_btn(delete, "\u{f6bf}", spacings::_10, state.theme.danger_btn())
+                            .on_press(StepMessage::DeleteCrawler(idx)),
                     );
                 scroll.push(row)
             },
@@ -113,10 +108,9 @@ impl<'a> Step<'a> for ChooseLibrary {
         let left_side = state.libraries.keys().zip(library_btn.iter_mut()).fold(
             left_side,
             |scroll, (library, btn)| {
-                let icon = btn_icon("\u{f76f} ");
-                let label = btn_text(library.to_str().unwrap_or_default());
+                let label = format!("\u{f755} {}", library.to_str().unwrap_or_default());
                 scroll.push(
-                    tra_btn(btn, icon, label, spacings::_128, &state.theme)
+                    tra_btn(btn, label, spacings::_128, &state.theme)
                         .on_press(StepMessage::DeleteLocalLibrary(library.into())),
                 )
             },
@@ -143,17 +137,17 @@ impl<'a> Step<'a> for ChooseLibrary {
             },
         );
 
-        let cl_l = btn_text(state.i18n.choose_library);
-        let dp_l = btn_text(state.i18n.from_the_web);
+        let cl_l = format!("\u{f753} {}", state.i18n.choose_library);
+        let dp_l = format!("\u{f5e3} {}", state.i18n.from_the_web);
         let left_ctl = Row::new()
             .spacing(spacings::_8)
             .push(
-                pri_btn(local_btn, btn_icon("\u{f254} "), cl_l, 0, &state.theme)
+                pri_btn(local_btn, cl_l, 0, &state.theme)
                     .width(Length::FillPortion(1))
                     .on_press(StepMessage::AddLocalLibrary),
             )
             .push(
-                pri_btn(spider_btn, btn_icon("\u{f0e4} "), dp_l, 0, &state.theme)
+                pri_btn(spider_btn, dp_l, 0, &state.theme)
                     .width(Length::FillPortion(1))
                     .on_press(StepMessage::AddCrawler),
             );

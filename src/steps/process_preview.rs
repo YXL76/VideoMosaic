@@ -1,11 +1,7 @@
 use iced::Subscription;
 use {
     super::{Step, StepMessage},
-    crate::{
-        states::State,
-        styles::spacings,
-        widgets::{btn_icon, btn_text, pri_btn},
-    },
+    crate::{states::State, styles::spacings, widgets::pri_btn},
     iced::{
         button, scrollable, Alignment, Column, Element, Image, Length, ProgressBar, Row, Rule,
         Scrollable, Text,
@@ -20,7 +16,7 @@ pub struct ProcessPreview {
 
 impl<'a> Step<'a> for ProcessPreview {
     fn title(&self, state: &State) -> &str {
-        state.i18n.process
+        state.i18n.process_preview
     }
 
     fn can_back(&self, state: &State) -> bool {
@@ -43,8 +39,7 @@ impl<'a> Step<'a> for ProcessPreview {
 
         let mut btn = pri_btn(
             toggle,
-            btn_icon("\u{f40a} "),
-            btn_text(state.i18n.start),
+            format!("\u{f909} {}", state.i18n.start),
             spacings::_32,
             &state.theme,
         );

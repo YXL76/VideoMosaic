@@ -1,10 +1,6 @@
 use {
     super::{Step, StepMessage},
-    crate::{
-        states::State,
-        styles::spacings,
-        widgets::{btn_icon, btn_text, pri_btn},
-    },
+    crate::{states::State, styles::spacings, widgets::pri_btn},
     iced::{
         alignment, button, scrollable, Column, Element, Image, Length, Row, Scrollable, Space, Text,
     },
@@ -33,22 +29,20 @@ impl<'a> Step<'a> for ChooseTarget {
             video_btn,
         } = self;
 
-        let ci_i = btn_icon("\u{f104} ");
-        let ci_l = btn_text(state.i18n.choose_image);
-        let cv_i = btn_icon("\u{f0fc} ");
-        let cv_l = btn_text(state.i18n.choose_video);
+        let ci_l = format!("\u{f603} {}", state.i18n.choose_image);
+        let cv_l = format!("\u{f5fb} {}", state.i18n.choose_video);
 
         let left_side = Column::new()
             .padding(spacings::_4)
             .spacing(spacings::_4)
             .push(Space::with_height(Length::FillPortion(1)))
             .push(
-                pri_btn(image_btn, ci_i, ci_l, spacings::_32, &state.theme)
+                pri_btn(image_btn, ci_l, spacings::_32, &state.theme)
                     .on_press(StepMessage::TargetType(TargetType::Image)),
             )
             .push(Space::with_height(Length::Units(spacings::_3)))
             .push(
-                pri_btn(video_btn, cv_i, cv_l, spacings::_32, &state.theme)
+                pri_btn(video_btn, cv_l, spacings::_32, &state.theme)
                     .on_press(StepMessage::TargetType(TargetType::Video)),
             )
             .push(Space::with_height(Length::FillPortion(1)));

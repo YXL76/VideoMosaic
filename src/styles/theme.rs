@@ -12,8 +12,8 @@ pub enum Theme {
 impl Theme {
     pub fn symbol(&self) -> &str {
         match self {
-            Self::Light => "\u{f0de}",
-            Self::Dark => "\u{f0dd}",
+            Self::Light => "\u{f5dd}",
+            Self::Dark => "\u{f5dc}",
         }
     }
 

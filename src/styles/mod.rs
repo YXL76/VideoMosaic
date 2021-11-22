@@ -6,12 +6,7 @@ mod theme;
 pub use theme::Theme;
 
 pub mod fonts {
-    use iced::Font;
-
-    pub const MATERIAL_DESIGN_ICONS: Font = Font::External {
-        name: "Material Design Icons",
-        bytes: include_bytes!("../../static/fonts/materialdesignicons-webfont.ttf"),
-    };
+    pub const SARASA_UI_NERD: &[u8] = include_bytes!("../../static/fonts/Sarasa UI SC Nerd Font Plus Material Design Icons Windows Compatible.ttf");
 }
 
 pub mod spacings {

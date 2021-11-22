@@ -1,42 +1,21 @@
 use {
-    crate::styles::{fonts, spacings, Theme},
-    iced::{alignment, button, Button, Container, Length, Row, Text},
+    crate::styles::{spacings, Theme},
+    iced::{alignment, button, Button, Length, Text},
 };
 
-type BtnText = Text;
-
-pub fn btn_text(label: &str) -> BtnText {
-    Text::new(label)
-        .horizontal_alignment(alignment::Horizontal::Center)
-        .vertical_alignment(alignment::Vertical::Center)
-}
-
-pub fn btn_icon(label: &str) -> BtnText {
-    Text::new(label)
-        .horizontal_alignment(alignment::Horizontal::Center)
-        .vertical_alignment(alignment::Vertical::Center)
-        .font(fonts::MATERIAL_DESIGN_ICONS)
-}
-
-fn btn<'a, Message: 'a + Clone>(
+fn btn<'a, Message: 'a + Clone, T: Into<String>>(
     state: &'a mut button::State,
-    left: BtnText,
-    right: BtnText,
+    label: T,
     len: u16,
-    style: Box<dyn button::StyleSheet>,
+    style: Box<dyn button::StyleSheet + 'a>,
 ) -> Button<'a, Message> {
     Button::new(
         state,
-        Container::new(
-            Row::new()
-                .push(left)
-                .push(right)
-                .align_items(alignment::Alignment::Center),
-        )
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_y()
-        .center_x(),
+        Text::new(label)
+            .vertical_alignment(alignment::Vertical::Center)
+            .horizontal_alignment(alignment::Horizontal::Center)
+            .width(Length::Fill)
+            .height(Length::Fill),
     )
     .padding(spacings::_3)
     .width(Length::Units(len))
@@ -44,58 +23,41 @@ fn btn<'a, Message: 'a + Clone>(
 }
 
 #[inline(always)]
-pub fn pri_btn<'a, Message: 'a + Clone>(
+pub fn pri_btn<'a, Message: 'a + Clone, T: Into<String>>(
     state: &'a mut button::State,
-    left: BtnText,
-    right: BtnText,
+    label: T,
     len: u16,
     theme: &Theme,
 ) -> Button<'a, Message> {
-    btn(state, left, right, len, theme.primary_btn())
+    btn(state, label, len, theme.primary_btn())
 }
 
 #[inline(always)]
-pub fn sec_btn<'a, Message: 'a + Clone>(
+pub fn sec_btn<'a, Message: 'a + Clone, T: Into<String>>(
     state: &'a mut button::State,
-    left: BtnText,
-    right: BtnText,
+    label: T,
     len: u16,
     theme: &Theme,
 ) -> Button<'a, Message> {
-    btn(state, left, right, len, theme.secondary_btn())
-}
-
-/* #[inline(always)]
-pub fn dan_btn<'a, Message: 'a + Clone>(
-    state: &'a mut button::State,
-    left: BtnText,
-    right: BtnText,
-    len: u16,
-    theme: &Theme,
-) -> Button<'a, Message> {
-    btn(state, left, right, len, theme.danger_btn())
-} */
-
-#[inline(always)]
-pub fn tra_btn<'a, Message: 'a + Clone>(
-    state: &'a mut button::State,
-    left: BtnText,
-    right: BtnText,
-    len: u16,
-    theme: &Theme,
-) -> Button<'a, Message> {
-    btn(state, left, right, len, theme.transparency_btn())
+    btn(state, label, len, theme.secondary_btn())
 }
 
 #[inline(always)]
-pub fn rou_btn<'a, Message: 'a + Clone>(
+pub fn tra_btn<'a, Message: 'a + Clone, T: Into<String>>(
     state: &'a mut button::State,
-    label: BtnText,
+    label: T,
+    len: u16,
+    theme: &Theme,
+) -> Button<'a, Message> {
+    btn(state, label, len, theme.transparency_btn())
+}
+
+#[inline(always)]
+pub fn rou_btn<'a, Message: 'a + Clone, T: Into<String>>(
+    state: &'a mut button::State,
+    label: T,
     len: u16,
     style: Box<dyn button::StyleSheet + 'a>,
 ) -> Button<'a, Message> {
-    Button::new(state, label)
-        .width(Length::Units(len))
-        .height(Length::Units(len))
-        .style(style)
+    btn(state, label, len, style).height(Length::Units(len))
 }

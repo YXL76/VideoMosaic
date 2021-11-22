@@ -24,8 +24,8 @@ use {
     },
     steps::{StepMessage, Steps, TargetType},
     streams::{crawler, process},
-    styles::{spacings, Theme},
-    widgets::{btn_icon, btn_text, pri_btn, rou_btn, sec_btn},
+    styles::{fonts, spacings, Theme},
+    widgets::{pri_btn, rou_btn, sec_btn},
 };
 
 pub fn main() -> iced::Result {
@@ -44,6 +44,7 @@ pub fn main() -> iced::Result {
             icon: Some(window::Icon::from_rgba(icon, 600, 600).unwrap()),
             ..window::Settings::default()
         },
+        default_font: Some(fonts::SARASA_UI_NERD),
         text_multithreading: false,
         antialiasing: false,
         ..Settings::default()
@@ -322,7 +323,7 @@ impl<'a> Application for MosaicVideo<'a> {
             .push(
                 rou_btn(
                     i18n_btn,
-                    btn_text(state.i18n.symbol),
+                    state.i18n.symbol,
                     spacings::_12,
                     state.theme.transparency_btn(),
                 )
@@ -331,7 +332,7 @@ impl<'a> Application for MosaicVideo<'a> {
             .push(
                 rou_btn(
                     theme_btn,
-                    btn_icon(state.theme.symbol()),
+                    state.theme.symbol(),
                     spacings::_12,
                     state.theme.transparency_btn(),
                 )
@@ -340,31 +341,29 @@ impl<'a> Application for MosaicVideo<'a> {
             .push(
                 rou_btn(
                     exit_btn,
-                    btn_icon("\u{f156}"),
+                    "\u{f655}",
                     spacings::_12,
                     state.theme.transparency_btn(),
                 )
                 .on_press(Message::ExitPressed),
             );
 
-        let back_i = btn_icon("\u{f141} ");
-        let back_l = btn_text(state.i18n.back);
-        let next_i = btn_icon(" \u{f142}");
-        let next_l = btn_text(state.i18n.next);
+        let back_l = format!("\u{f640} {}", state.i18n.back);
+        let next_l = format!("{} \u{f641}", state.i18n.next);
         let btn_w = spacings::_24;
         let control_items: [Element<_>; 3] = match (steps.can_back(state), steps.can_next(state)) {
             (true, true) => [
-                sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
+                sec_btn(back_btn, back_l, btn_w, &state.theme)
                     .on_press(Message::BackPressed)
                     .into(),
                 Space::with_width(Length::Units(10)).into(),
-                pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
+                pri_btn(next_btn, next_l, btn_w, &state.theme)
                     .on_press(Message::NextPressed)
                     .into(),
             ],
 
             (true, false) => [
-                sec_btn(back_btn, back_i, back_l, btn_w, &state.theme)
+                sec_btn(back_btn, back_l, btn_w, &state.theme)
                     .on_press(Message::BackPressed)
                     .into(),
                 Space::with_width(Length::Units(10)).into(),
@@ -374,7 +373,7 @@ impl<'a> Application for MosaicVideo<'a> {
             (false, true) => [
                 Space::with_width(Length::Units(10)).into(),
                 Space::with_width(Length::Units(btn_w)).into(),
-                pri_btn(next_btn, next_l, next_i, btn_w, &state.theme)
+                pri_btn(next_btn, next_l, btn_w, &state.theme)
                     .on_press(Message::NextPressed)
                     .into(),
             ],
