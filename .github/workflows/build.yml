@@ -109,14 +109,4 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ runner.os }}-x64
-          path: target/release/mosaic_video.exe
-
-  build-on-linux:
-    name: Build on Linux
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ runner.os }}-x64
           path: ${{ matrix.path }}
