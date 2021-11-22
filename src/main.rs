@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 mod states;
 mod steps;
 mod streams;
