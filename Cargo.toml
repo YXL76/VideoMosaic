@@ -15,11 +15,12 @@ async-std = "1.10"
 image_crawler = { path = "image_crawler" }
 image_diff = { path = "image_diff" }
 itertools = "0.10"
-rfd = "0.5"
+rfd = "0.6"
 
 [dependencies.iced]
 git = "https://github.com/iced-rs/iced"
-features = ["image", "async-std"]
+default-features = false
+features = ["wgpu", "image", "async-std"]
 
 [dependencies.iced_native]
 git = "https://github.com/iced-rs/iced"

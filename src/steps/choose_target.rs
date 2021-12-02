@@ -49,13 +49,13 @@ impl<'a> Step<'a> for ChooseTarget {
 
         let mut right_side = Scrollable::new(scroll)
             .padding(spacings::_4)
-            .width(Length::Shrink)
+            .width(Length::Fill)
             .height(Length::Fill)
             .style(state.theme)
             .align_items(alignment::Alignment::Center);
         if let Some(img) = state.target_preview.as_ref() {
             right_side = right_side
-                .push(Image::new(img.clone()))
+                .push(Image::new(img.clone()).width(Length::Shrink))
                 .push(Text::new(state.target_path.to_str().unwrap_or("")));
         }
 
