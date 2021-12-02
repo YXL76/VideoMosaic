@@ -2,9 +2,9 @@
 <module type="CPP_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/image_crawler/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/image_diff/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crawler/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/diff/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/gui/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

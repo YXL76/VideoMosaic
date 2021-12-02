@@ -300,7 +300,7 @@ mod tests {
     }
 
     fn lib() -> Vec<PathBuf> {
-        read_dir("../image_crawler/test")
+        read_dir("../crawler/test")
             .unwrap()
             .filter_map(|res| match res.as_ref() {
                 Ok(entry) => {

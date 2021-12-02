@@ -6,7 +6,7 @@ mod theme;
 pub use theme::Theme;
 
 pub mod fonts {
-    pub const SARASA_UI_NERD: &[u8] = include_bytes!("../../static/fonts/Sarasa UI SC Nerd Font Plus Material Design Icons Windows Compatible.ttf");
+    pub const SARASA_UI_NERD: &[u8] = include_bytes!("../../../static/fonts/Sarasa UI SC Nerd Font Plus Material Design Icons Windows Compatible.ttf");
 }
 
 pub mod spacings {

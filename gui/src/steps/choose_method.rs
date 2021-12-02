@@ -4,7 +4,7 @@ use {
     iced::{
         scrollable, slider, Column, Element, Length, Radio, Row, Scrollable, Slider, Text, Toggler,
     },
-    image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
+    mosaic_video_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
 };
 
 #[derive(Default)]

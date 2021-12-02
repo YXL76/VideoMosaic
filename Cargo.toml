@@ -1,37 +1,11 @@
-[package]
-name = "mosaic_video"
-version = "0.1.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
-authors = ["YXL76 <chenxin.lan.76@gmail.com>"]
-readme = "README.md"
-homepage = "https://github.com/YXL76/MosaicVideo"
-repository = "https://github.com/YXL76/MosaicVideo"
-
-# See more keys and their definitions at hpalettettps://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-async-std = "1.10"
-image_crawler = { path = "image_crawler" }
-image_diff = { path = "image_diff" }
-itertools = "0.10"
-rfd = "0.6"
-
-[dependencies.iced]
-git = "https://github.com/iced-rs/iced"
-default-features = false
-features = ["wgpu", "image", "async-std"]
-
-[dependencies.iced_native]
-git = "https://github.com/iced-rs/iced"
-
-[dependencies.image]
-version = "0.23"
-default-features = false
-features = ["jpeg", "png"] # "jpeg_rayon" may cause stack overflow
+[patch.crates-io]
+wgpu = { git = "https://github.com/gfx-rs/wgpu", branch = "master" }
+wgpu_glyph = { git = "https://github.com/hecrj/wgpu_glyph", branch = "master" }
 
 [profile.release]
 lto = true
 
 [workspace]
-members = ["image_crawler", "image_diff"]
+resolver = "2"
+members = ["gui", "crawler", "diff"]
+default-members = ["gui"]

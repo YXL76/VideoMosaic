@@ -11,5 +11,5 @@
 
 
 # test
-image_crawler/test/
-image_diff/test.*
+crawler/test/
+diff/test.*

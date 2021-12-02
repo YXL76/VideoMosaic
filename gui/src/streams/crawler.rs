@@ -5,7 +5,7 @@ use {
         Subscription,
     },
     iced_native::subscription,
-    image_crawler::{download_urls, gen_client, get_urls, HttpClient, Result, TasksIter},
+    mosaic_video_crawler::{download_urls, gen_client, get_urls, HttpClient, Result, TasksIter},
     std::{
         any::TypeId,
         hash::{Hash, Hasher},

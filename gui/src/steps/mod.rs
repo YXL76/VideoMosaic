@@ -12,7 +12,7 @@ use {
     choose_method::ChooseMethod,
     choose_target::ChooseTarget,
     iced::{Element, Subscription},
-    image_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
+    mosaic_video_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
     process_preview::ProcessPreview,
     std::path::PathBuf,
 };

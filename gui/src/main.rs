@@ -13,7 +13,7 @@ use {
     },
     iced_native::subscription,
     image::{load_from_memory_with_format, ImageFormat},
-    image_diff::first_frame,
+    mosaic_video_diff::first_frame,
     rfd::{AsyncMessageDialog, FileDialog, MessageButtons, MessageDialog, MessageLevel},
     states::{State, EN, IMAGE_FILTER, VIDEO_FILTER, ZH_CN},
     std::{
@@ -29,9 +29,9 @@ use {
 };
 
 pub fn main() -> iced::Result {
-    image_diff::init().unwrap();
+    mosaic_video_diff::init().unwrap();
     let icon = load_from_memory_with_format(
-        include_bytes!("../static/images/icon.jpg"),
+        include_bytes!("../../static/images/icon.jpg"),
         ImageFormat::Jpeg,
     )
     .unwrap()

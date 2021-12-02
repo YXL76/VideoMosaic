@@ -1469,33 +1469,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "image_crawler"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-std",
- "futures",
- "http",
- "isahc",
- "mime",
- "serde",
- "urlencoding",
-]
-
-[[package]]
-name = "image_diff"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-std",
- "ffmpeg-next",
- "futures",
- "image",
- "kmeans_colors",
- "palette",
-]
-
-[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1817,16 +1790,43 @@ dependencies = [
 ]
 
 [[package]]
-name = "mosaic_video"
+name = "mosaic_video_crawler"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-std",
+ "futures",
+ "http",
+ "isahc",
+ "mime",
+ "serde",
+ "urlencoding",
+]
+
+[[package]]
+name = "mosaic_video_diff"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-std",
+ "ffmpeg-next",
+ "futures",
+ "image",
+ "kmeans_colors",
+ "palette",
+]
+
+[[package]]
+name = "mosaic_video_gui"
 version = "0.1.0"
 dependencies = [
  "async-std",
  "iced",
  "iced_native",
  "image",
- "image_crawler",
- "image_diff",
  "itertools",
+ "mosaic_video_crawler",
+ "mosaic_video_diff",
  "rfd",
 ]
 
@@ -3145,8 +3145,7 @@ dependencies = [
 [[package]]
 name = "wgpu_glyph"
 version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c78d49f4d168b245882ce000ee94fc67e744b33760c0119b0dbf8cb3caf20de5"
+source = "git+https://github.com/hecrj/wgpu_glyph?branch=master#f9f9adb9f134edebecfc9d20de0edb063de22071"
 dependencies = [
  "bytemuck",
  "glyph_brush",
@@ -3335,3 +3334,8 @@ name = "xml-rs"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2d7d3948613f75c98fd9328cfdcc45acc4d360655289d0a7d4ec931392200a3"
+
+[[patch.unused]]
+name = "wgpu"
+version = "0.11.0"
+source = "git+https://github.com/gfx-rs/wgpu?branch=master#c6d1491bb17d6cdcd8ad418d42bd0e14d32201a4"
