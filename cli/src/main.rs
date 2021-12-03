@@ -52,6 +52,9 @@ struct Opts {
     /// Filter (nearest, triangle, catmullRom, gaussian, lanczos3)
     #[clap(long, default_value = "nearest", parse(from_str = str2filter))]
     filter: Filter,
+    /// The number of iterations of the quadrant
+    #[clap(long)]
+    quad_iter: Option<usize>,
 }
 
 fn main() {
@@ -123,6 +126,7 @@ fn main() {
         color_space: opts.color_space,
         dist_algo: opts.dist_algo,
         filter: opts.filter,
+        quad_iter: opts.quad_iter,
     };
 
     let ext = OsStr::new(if video { "mp4" } else { "png" });
@@ -137,7 +141,7 @@ fn main() {
         path.set_extension(ext);
     }
 
-    let (mut proc, (cnt, width, height)) = ProcessWrapper::new(
+    let mut proc = ProcessWrapper::new(
         config,
         opts.target.to_string_lossy().to_string(),
         path.to_string_lossy().to_string(),
@@ -148,9 +152,10 @@ fn main() {
     let m = MultiProgress::new();
     let fill = m.add(gen_progress_bar(
         "Fill",
-        (width as u64 / opts.size as u64 + 1) * (height as u64 / opts.size as u64 + 1),
+        (proc.width() as u64 / opts.size as u64 + 1)
+            * (proc.height() as u64 / opts.size as u64 + 1),
     ));
-    let total = m.add(gen_progress_bar("Total", cnt as u64));
+    let total = m.add(gen_progress_bar("Total", proc.frames() as u64));
 
     block_on(async move {
         let mut lib = Vec::with_capacity(library.len());
@@ -161,22 +166,21 @@ fn main() {
             }
             index.inc(1);
         }
+        proc.post_index(Arc::new(lib));
         index.finish();
-        let lib = Arc::new(lib);
 
-        proc.pre_fill(lib);
-        while let Some(tasks) = proc.fill() {
+        while proc.pre_fill() {
             fill.reset();
+            let tasks = proc.fill();
             for task in tasks {
                 let (mask, replace) = task.await;
                 proc.post_fill_step(mask, replace);
                 fill.inc(1);
             }
-            fill.finish();
             proc.post_fill();
+            fill.finish();
             total.inc(1);
         }
-        fill.finish();
         total.finish();
     });
 }

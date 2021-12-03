@@ -1,6 +1,9 @@
 use {
     super::{dark, light},
-    iced::{button, container, progress_bar, radio, rule, scrollable, slider, text_input, toggler},
+    iced::{
+        button, checkbox, container, progress_bar, radio, rule, scrollable, slider, text_input,
+        toggler,
+    },
 };
 
 #[derive(Copy, Clone)]
@@ -56,6 +59,15 @@ impl Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self::Light
+    }
+}
+
+impl<'a> From<Theme> for Box<dyn checkbox::StyleSheet + 'a> {
+    fn from(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => light::Checkbox.into(),
+            Theme::Dark => dark::Checkbox.into(),
+        }
     }
 }
 

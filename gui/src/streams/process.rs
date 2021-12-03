@@ -64,15 +64,13 @@ where
             move |state| async move {
                 match state {
                     State::Ready(config, input, output, video, library) => Some({
-                        let (proc, (cnt, width, height)) =
-                            ProcessWrapper::new(config, input, output, video);
-
+                        let proc = ProcessWrapper::new(config, input, output, video);
                         let size = config.size as u32;
                         (
                             Progress::Started(
                                 library.len() as f32,
-                                ((width / size + 1) * (height / size + 1)) as f32,
-                                cnt as f32,
+                                ((proc.width() / size + 1) * (proc.height() / size + 1)) as f32,
+                                proc.frames() as f32,
                             ),
                             State::Start(proc, library),
                         )
@@ -94,8 +92,9 @@ where
                         None => match lib.is_empty() {
                             true => (Progress::Error, State::Finished),
                             false => {
-                                proc.pre_fill(Arc::new(lib));
-                                let tasks = proc.fill().unwrap().into_iter();
+                                proc.post_index(Arc::new(lib));
+                                let _ = proc.pre_fill();
+                                let tasks = proc.fill().into_iter();
                                 (Progress::Indexed, State::Filling(proc, tasks))
                             }
                         },
@@ -109,12 +108,12 @@ where
                         }
                         None => {
                             proc.post_fill();
-                            match proc.fill() {
-                                Some(tasks) => {
-                                    let tasks = tasks.into_iter();
+                            match proc.pre_fill() {
+                                true => {
+                                    let tasks = proc.fill().into_iter();
                                     (Progress::Filled, State::Filling(proc, tasks))
                                 }
-                                None => (Progress::Finished, State::Finished),
+                                false => (Progress::Finished, State::Finished),
                             }
                         }
                     }),

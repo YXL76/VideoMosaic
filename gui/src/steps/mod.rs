@@ -37,6 +37,8 @@ pub enum StepMessage {
     K(u8),
     Hamerly(bool),
     Size(u16),
+    Quad(bool),
+    QuadValue(u16),
     Start,
     ProcessMessage(process::Progress),
 }

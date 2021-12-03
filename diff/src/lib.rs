@@ -1,3 +1,6 @@
+#![feature(int_log)]
+#![feature(map_first_last)]
+
 extern crate ffmpeg_next as ffmpeg;
 
 mod process;

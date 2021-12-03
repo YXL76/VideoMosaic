@@ -2,10 +2,11 @@ mod average;
 mod kmeans;
 mod pixel;
 
+use image::{DynamicImage, GenericImageView};
 use {
     crate::{
-        utils::{ciede2000, converter, FrameIter, RawColor, HSV, SRBG},
-        CalculationUnit, ColorSpace, DistanceAlgorithm, ImageDump, Transcode,
+        ciede2000, converter, CalculationUnit, ColorSpace, DistanceAlgorithm, F32Wrapper,
+        FrameIter, ImageDump, RawColor, Transcode, HSV, SRBG,
     },
     async_std::task::{spawn_blocking, JoinHandle},
     average::AverageImpl,
@@ -14,7 +15,7 @@ use {
     kmeans::KMeansImpl,
     palette::{Lab, Pixel},
     pixel::PixelImpl,
-    std::{fmt, path::PathBuf, sync::Arc},
+    std::{collections::BTreeMap, fmt, path::PathBuf, sync::Arc},
 };
 
 pub type Mask = (u32, u32, u32, u32);
@@ -45,8 +46,13 @@ pub struct ProcessWrapper {
     iter: Box<dyn FrameIter + Sync + Send + 'static>,
     inner: Arc<dyn Process + Sync + Send + 'static>,
     buf: RgbImage,
+    frames: i64,
+    width: u32,
+    height: u32,
+    quad_iter: Option<usize>,
     lib: Option<Arc<Vec<LibItem>>>,
     masks: Option<Vec<Mask>>,
+    next: Option<Arc<RgbImage>>,
 }
 
 impl ProcessWrapper {
@@ -60,11 +66,12 @@ impl ProcessWrapper {
             color_space,
             dist_algo,
             filter,
+            quad_iter,
         }: ProcessConfig,
         input: String,
         output: String,
         video: bool,
-    ) -> (Self, (i64, u32, u32)) {
+    ) -> Self {
         let size = size as u32 * 10;
         let filter = filter.into();
 
@@ -109,31 +116,43 @@ impl ProcessWrapper {
             )),
         };
 
-        if video {
-            let (iter, info) = Transcode::new(input, output);
-            (
-                Self {
-                    iter: Box::new(iter),
-                    inner,
-                    buf: ImageBuffer::new(info.1, info.2),
-                    lib: None,
-                    masks: None,
-                },
-                info,
-            )
+        let (iter, frames, width, height) = if video {
+            let (iter, frames, width, height) = Transcode::new(input, output);
+            let iter: Box<dyn FrameIter + Sync + Send + 'static> = Box::new(iter);
+            (iter, frames, width, height)
         } else {
-            let (iter, info) = ImageDump::new(input, output);
-            (
-                Self {
-                    iter: Box::new(iter),
-                    inner,
-                    buf: ImageBuffer::new(info.1, info.2),
-                    lib: None,
-                    masks: None,
-                },
-                info,
-            )
+            let (iter, frames, width, height) = ImageDump::new(input, output);
+            let iter: Box<dyn FrameIter + Sync + Send + 'static> = Box::new(iter);
+            (iter, frames, width, height)
+        };
+
+        Self {
+            iter,
+            inner,
+            buf: ImageBuffer::new(width, height),
+            frames,
+            width,
+            height,
+            quad_iter,
+            lib: None,
+            masks: None,
+            next: None,
         }
+    }
+
+    #[inline(always)]
+    pub fn frames(&self) -> i64 {
+        self.frames
+    }
+
+    #[inline(always)]
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    #[inline(always)]
+    pub fn height(&self) -> u32 {
+        self.height
     }
 
     #[inline(always)]
@@ -143,6 +162,15 @@ impl ProcessWrapper {
 
     #[inline(always)]
     pub fn index(&self, libraries: Vec<PathBuf>) -> Tasks<Option<LibItem>> {
+        let (nwidth, nheight) = match self.quad_iter {
+            Some(iterations) => {
+                // 1 + 4 + 16 + ...
+                let min_depth = (iterations * 3 + 1).log2() / 2 + 1;
+                let guess = min_depth / 4;
+                (self.width / guess, self.height / guess)
+            }
+            None => (self.inner.size(), self.inner.size()),
+        };
         libraries
             .into_iter()
             .map(|lib| {
@@ -150,7 +178,7 @@ impl ProcessWrapper {
                 spawn_blocking(move || {
                     if let Ok(img) = image::open(lib) {
                         let img = img
-                            .resize_to_fill(inner.size(), inner.size(), inner.filter())
+                            .resize_to_fill(nwidth, nheight, inner.filter())
                             .into_rgb8();
                         return Some(inner.index_step(img));
                     }
@@ -161,37 +189,128 @@ impl ProcessWrapper {
     }
 
     #[inline(always)]
-    pub fn pre_fill(&mut self, lib: Arc<Vec<LibItem>>) {
+    pub fn post_index(&mut self, lib: Arc<Vec<LibItem>>) {
         self.lib = Some(lib);
-        self.masks = Some(self.mask());
     }
 
     #[inline(always)]
-    pub fn fill(&mut self) -> Option<Tasks<(Mask, Arc<RgbImage>)>> {
-        let lib = self.lib.as_ref().unwrap();
-        match self.iter.next() {
-            Some(img) => Some(
-                self.masks
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .map(|&mask| {
-                        let img = img.clone();
-                        let lib = lib.clone();
-                        let inner = self.inner();
-                        spawn_blocking(move || inner.fill_step(img, mask, lib))
-                    })
-                    .collect::<FuturesUnordered<_>>(),
-            ),
-            None => {
-                self.iter.flush();
-                None
-            }
+    pub fn pre_fill(&mut self) -> bool {
+        self.next = self.iter.next();
+        if self.next.is_none() {
+            self.iter.flush();
+            return false;
         }
+
+        if let Some(iterations) = self.quad_iter {
+            let img = self.next.as_ref().unwrap();
+            let mut heap: BTreeMap<F32Wrapper, Mask> = BTreeMap::new();
+            heap.insert(F32Wrapper(0.), (0, 0, self.width, self.height));
+            for _ in 0..iterations {
+                let (_, (x, y, w, h)) = heap.pop_last().unwrap();
+                if w < 2 || h < 2 {
+                    heap.insert(F32Wrapper(0.), (x, y, w, h));
+                    continue;
+                }
+
+                let w2 = w / 2;
+                let h2 = h / 2;
+                let xm = x + w2;
+                let ym = y + h2;
+                let quad = [
+                    (x, y, w2, h2),
+                    (xm, y, w - w2, h2),
+                    (x, ym, w2, h - h2),
+                    (xm, ym, w - w2, h - h2),
+                ];
+
+                for (x, y, w, h) in quad {
+                    let mut total = 0;
+                    // RGB: 0~255
+                    let mut histogram = [[0usize; 256]; 3];
+                    for j in y..(y + h) {
+                        for i in x..(x + w) {
+                            let raw = &img.get_pixel(i, j).0;
+                            total += 1;
+                            histogram[0][raw[0] as usize] += 1;
+                            histogram[0][raw[1] as usize] += 1;
+                            histogram[0][raw[2] as usize] += 1;
+                        }
+                    }
+
+                    const FACTOR: [f32; 3] = [0.2989, 0.5870, 0.1140];
+                    let error = histogram
+                        .into_iter()
+                        .enumerate()
+                        .map(|(idx, part)| {
+                            let mean = part
+                                .iter()
+                                .enumerate()
+                                .map(|(idx, cnt)| idx * cnt)
+                                .sum::<usize>()
+                                / total;
+                            let mean = mean as f32;
+                            let error = part
+                                .into_iter()
+                                .enumerate()
+                                .map(|(idx, cnt)| (cnt as f32 * (idx as f32 - mean)).powi(2))
+                                .sum::<f32>()
+                                / total as f32;
+                            error.sqrt() * FACTOR[idx]
+                        })
+                        .sum::<f32>();
+                    heap.insert(F32Wrapper(error), (x, y, w, h));
+                }
+            }
+
+            self.masks = Some(heap.into_values().collect());
+        } else {
+            if self.masks.is_some() {
+                return true;
+            }
+
+            let size = self.inner.size();
+            let mut masks = Vec::with_capacity(
+                (((self.width / size) + 1) * ((self.height / size) + 1)) as usize,
+            );
+            for y in (0..self.height).step_by(size as usize) {
+                for x in (0..self.width).step_by(size as usize) {
+                    let w = size.min(self.width - x);
+                    let h = size.min(self.height - y);
+                    masks.push((x, y, w, h));
+                }
+            }
+            self.masks = Some(masks);
+        };
+
+        true
     }
 
     #[inline(always)]
-    pub fn post_fill_step(&mut self, (x, y, w, h): Mask, replace: Arc<RgbImage>) {
+    pub fn fill(&mut self) -> Tasks<(Mask, Arc<RgbImage>)> {
+        let lib = self.lib.as_ref().unwrap();
+        let img = self.next.as_ref().unwrap();
+        self.masks
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|&mask| {
+                let img = img.clone();
+                let lib = lib.clone();
+                let inner = self.inner();
+                spawn_blocking(move || inner.fill_step(img, mask, lib))
+            })
+            .collect::<FuturesUnordered<_>>()
+    }
+
+    #[inline(always)]
+    pub fn post_fill_step(&mut self, (x, y, w, h): Mask, mut replace: Arc<RgbImage>) {
+        if replace.width() != w || replace.height() != h {
+            replace = Arc::new(
+                DynamicImage::ImageRgb8(replace.inner().clone())
+                    .resize_to_fill(w, h, self.inner.filter())
+                    .into_rgb8(),
+            );
+        }
         for j in 0..h {
             for i in 0..w {
                 let p = replace.get_pixel(i, j);
@@ -203,21 +322,6 @@ impl ProcessWrapper {
     #[inline(always)]
     pub fn post_fill(&mut self) {
         self.iter.post_next(&self.buf)
-    }
-
-    #[inline(always)]
-    fn mask(&self) -> Vec<Mask> {
-        let size = self.inner.size();
-        let (width, height) = self.buf.dimensions();
-        let mut mask = Vec::with_capacity((((width / size) + 1) * ((height / size) + 1)) as usize);
-        for y in (0..height).step_by(size as usize) {
-            for x in (0..width).step_by(size as usize) {
-                let w = size.min(width - x);
-                let h = size.min(height - y);
-                mask.push((x, y, w, h));
-            }
-        }
-        mask
     }
 }
 
@@ -236,6 +340,7 @@ pub struct ProcessConfig {
     pub color_space: ColorSpace,
     pub dist_algo: DistanceAlgorithm,
     pub filter: Filter,
+    pub quad_iter: Option<usize>,
 }
 
 impl Default for ProcessConfig {
@@ -248,6 +353,7 @@ impl Default for ProcessConfig {
             color_space: Default::default(),
             dist_algo: Default::default(),
             filter: Default::default(),
+            quad_iter: Default::default(),
         }
     }
 }
@@ -296,6 +402,7 @@ mod tests {
             color_space: crate::ColorSpace::CIELAB,
             dist_algo: crate::DistanceAlgorithm::CIEDE2000,
             filter: super::Filter::Nearest,
+            quad_iter: Some(1024),
         }
     }
 
@@ -331,10 +438,10 @@ mod tests {
                     lib.push(i);
                 }
             }
-            let lib = Arc::new(lib);
+            proc.post_index(Arc::new(lib));
 
-            proc.pre_fill(lib);
-            while let Some(tasks) = proc.fill() {
+            while proc.pre_fill() {
+                let tasks = proc.fill();
                 for task in tasks {
                     let (mask, replace) = task.await;
                     proc.post_fill_step(mask, replace);
@@ -347,7 +454,7 @@ mod tests {
     #[test]
     fn image_process() {
         let config = config();
-        let (proc, _) = super::ProcessWrapper::new(
+        let proc = super::ProcessWrapper::new(
             config,
             "../static/images/testdata.jpg".to_string(),
             "test.png".to_string(),
@@ -363,7 +470,7 @@ mod tests {
         ffmpeg::log::set_level(ffmpeg::log::Level::Info);
 
         let config = config();
-        let (proc, _) = super::ProcessWrapper::new(
+        let proc = super::ProcessWrapper::new(
             config,
             "../static/videos/testdata.mp4".to_string(),
             "test.mp4".to_string(),

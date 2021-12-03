@@ -7,6 +7,7 @@ use {
         convert::FromColorUnclamped, encoding, white_point::D65, Clamp, ColorDifference, Hsv,
         IntoColor, Lab, Pixel, Srgb,
     },
+    std::cmp::{Ord, Ordering, PartialEq},
 };
 
 pub(crate) use {frame_iter::FrameIter, frame_iter::ImageDump, transcoder::Transcode};
@@ -47,4 +48,48 @@ pub(crate) fn ciede2000<T: Copy + Pixel<f32> + IntoColor<LAB>>(a: &RawColor, b: 
     let a: LAB = (*T::from_raw(a)).into_color();
     let b: LAB = (*T::from_raw(b)).into_color();
     a.get_color_difference(&b)
+}
+
+pub(crate) struct F32Wrapper(pub f32);
+
+impl PartialEq for F32Wrapper {
+    #[inline(always)]
+    fn eq(&self, other: &Self) -> bool {
+        if self.0.is_nan() {
+            other.0.is_nan()
+        } else {
+            self.0 == other.0
+        }
+    }
+}
+
+impl Eq for F32Wrapper {}
+
+impl PartialOrd for F32Wrapper {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for F32Wrapper {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        let lhs = &self.0;
+        let rhs = &other.0;
+        match lhs.partial_cmp(rhs) {
+            Some(ordering) => ordering,
+            None => {
+                if lhs.is_nan() {
+                    if rhs.is_nan() {
+                        Ordering::Equal
+                    } else {
+                        Ordering::Greater
+                    }
+                } else {
+                    Ordering::Less
+                }
+            }
+        }
+    }
 }

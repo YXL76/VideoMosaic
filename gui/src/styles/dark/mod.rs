@@ -1,3 +1,4 @@
+mod checkbox;
 mod progress_bar;
 mod radio;
 mod rule;
@@ -10,6 +11,6 @@ pub mod button;
 pub mod container;
 
 pub use {
-    progress_bar::ProgressBar, radio::Radio, rule::Rule, scrollable::Scrollable, slider::Slider,
-    text_input::TextInput, toggler::Toggler,
+    checkbox::Checkbox, progress_bar::ProgressBar, radio::Radio, rule::Rule,
+    scrollable::Scrollable, slider::Slider, text_input::TextInput, toggler::Toggler,
 };

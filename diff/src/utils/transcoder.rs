@@ -24,7 +24,7 @@ unsafe impl Send for Transcode {}
 unsafe impl Sync for Transcode {}
 
 impl FrameIter for Transcode {
-    fn new(input: String, output: String) -> (Self, (i64, u32, u32)) {
+    fn new(input: String, output: String) -> (Self, i64, u32, u32) {
         let ictx = format::input(&input).unwrap();
         let mut octx = format::output(&output).unwrap();
         format::context::input::dump(&ictx, 0, Some(&input));
@@ -85,7 +85,9 @@ impl FrameIter for Transcode {
 
                 last: None,
             },
-            (cnt, width, height),
+            cnt,
+            width,
+            height,
         )
     }
 

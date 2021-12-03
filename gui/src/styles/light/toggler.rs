@@ -23,15 +23,12 @@ impl toggler::StyleSheet for Toggler {
 
     fn hovered(&self, is_active: bool) -> toggler::Style {
         toggler::Style {
-            foreground: match is_active {
-                true => Color {
-                    a: 0.6,
-                    ..Color::WHITE
-                },
-                false => Color {
-                    a: 0.6,
-                    ..colors::sky::_500
-                },
+            foreground: Color {
+                a: 0.6,
+                ..match is_active {
+                    true => Color::WHITE,
+                    false => colors::sky::_500,
+                }
             },
             ..self.active(is_active)
         }

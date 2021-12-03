@@ -2,7 +2,8 @@ use {
     super::{Step, StepMessage},
     crate::{states::State, styles::spacings},
     iced::{
-        scrollable, slider, Column, Element, Length, Radio, Row, Scrollable, Slider, Text, Toggler,
+        scrollable, slider, Checkbox, Column, Element, Length, Radio, Row, Scrollable, Slider,
+        Text, Toggler,
     },
     mosaic_video_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
 };
@@ -12,6 +13,7 @@ pub struct ChooseMethod {
     scroll: scrollable::State,
     k_slider: slider::State,
     size_slider: slider::State,
+    quad_slider: slider::State,
 }
 
 impl<'a> Step<'a> for ChooseMethod {
@@ -24,6 +26,7 @@ impl<'a> Step<'a> for ChooseMethod {
             scroll,
             k_slider,
             size_slider,
+            quad_slider,
         } = self;
 
         let calc_unit = [
@@ -133,6 +136,7 @@ impl<'a> Step<'a> for ChooseMethod {
                 .style(state.theme),
             );
 
+        let quad_iter = state.config.quad_iter.unwrap_or(256) as u16;
         let config = Column::new()
             .spacing(spacings::_6)
             .push(Text::new(state.i18n.configuration).size(spacings::_8))
@@ -146,6 +150,23 @@ impl<'a> Step<'a> for ChooseMethod {
                     )))
                     .push(
                         Slider::new(size_slider, 3..=30, state.config.size, StepMessage::Size)
+                            .style(state.theme),
+                    ),
+            )
+            .push(
+                Row::new()
+                    .spacing(spacings::_6)
+                    .push(
+                        Checkbox::new(
+                            state.config.quad_iter.is_some(),
+                            format!("{}: {}", state.i18n.quad, quad_iter),
+                            StepMessage::Quad,
+                        )
+                        .style(state.theme),
+                    )
+                    .push(
+                        Slider::new(quad_slider, 256..=2048, quad_iter, StepMessage::QuadValue)
+                            .width(Length::Fill)
                             .style(state.theme),
                     ),
             );

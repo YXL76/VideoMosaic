@@ -62,7 +62,7 @@ impl button::StyleSheet for Transparency {
 
     fn hovered(&self) -> button::Style {
         button::Style {
-            text_color: colors::cool_gray::_800,
+            text_color: colors::cool_gray::_900,
             shadow_offset: Vector::new(1.0, 2.0),
             ..self.active()
         }

@@ -1,7 +1,7 @@
 use {image::RgbImage, std::sync::Arc};
 
 pub trait FrameIter {
-    fn new(input: String, output: String) -> (Self, (i64, u32, u32))
+    fn new(input: String, output: String) -> (Self, i64, u32, u32)
     where
         Self: Sized;
 
@@ -18,7 +18,7 @@ pub(crate) struct ImageDump {
 }
 
 impl FrameIter for ImageDump {
-    fn new(input: String, output: String) -> (Self, (i64, u32, u32)) {
+    fn new(input: String, output: String) -> (Self, i64, u32, u32) {
         let img = image::open(input).unwrap().into_rgb8();
         let (width, height) = img.dimensions();
         (
@@ -26,7 +26,9 @@ impl FrameIter for ImageDump {
                 img: Some(Arc::new(img)),
                 output,
             },
-            (1, width, height),
+            1,
+            width,
+            height,
         )
     }
 

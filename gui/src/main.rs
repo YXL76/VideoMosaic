@@ -229,6 +229,10 @@ impl<'a> Application for MosaicVideo<'a> {
                 StepMessage::K(item) => state.config.k = item,
                 StepMessage::Hamerly(item) => state.config.hamerly = item,
                 StepMessage::Size(item) => state.config.size = item,
+                StepMessage::Quad(item) => {
+                    state.config.quad_iter = if item { Some(256) } else { None }
+                }
+                StepMessage::QuadValue(item) => state.config.quad_iter = Some(item as usize),
 
                 StepMessage::Start => {
                     let video = state.target_type == TargetType::Video;

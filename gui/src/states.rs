@@ -84,6 +84,7 @@ pub struct I18n {
     pub lanczos3: &'static str,
     pub configuration: &'static str,
     pub size: &'static str,
+    pub quad: &'static str,
 
     pub process_preview: &'static str,
     pub start: &'static str,
@@ -134,6 +135,7 @@ pub const EN: I18n = I18n {
     lanczos3: "Lanczos3",
     configuration: "Configuration",
     size: "Size",
+    quad: "Quad",
 
     process_preview: "Process & Preview",
     start: "Start",
@@ -178,6 +180,7 @@ pub const ZH_CN: I18n = I18n {
     lanczos3: "Lanczos 3",
     configuration: "配置",
     size: "大小",
+    quad: "四分图",
 
     process_preview: "处理并预览",
     start: "开始",
