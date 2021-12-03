@@ -11,9 +11,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            path: target/release/mosaic_video
+            cli: target/release/mosaic_video_cli
+            gui: target/release/mosaic_video_gui
           - os: windows-latest
-            path: target/release/mosaic_video.exe
+            cli: target/release/mosaic_video_cli.exe
+            gui: target/release/mosaic_video_gui.exe
 
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -104,9 +106,13 @@ jobs:
         if: runner.os == 'Windows'
 
       - name: Build
-        run: cargo build --release
+        run: |
+          cargo build --release
+          cargo build --release --package mosaic_video_cli
 
       - uses: actions/upload-artifact@v2
         with:
           name: ${{ runner.os }}-x64
-          path: ${{ matrix.path }}
+          path: |
+            ${{ matrix.cli }}
+            ${{ matrix.gui }}
