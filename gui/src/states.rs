@@ -10,8 +10,6 @@ use {
 };
 
 pub const LIBRARY_BTN_CNT: usize = 16;
-pub const IMAGE_FILTER: [&str; 3] = ["png", "jpg", "jpeg"];
-pub const VIDEO_FILTER: [&str; 1] = ["mp4"];
 
 #[derive(Default)]
 pub struct State {

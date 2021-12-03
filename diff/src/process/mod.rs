@@ -281,8 +281,8 @@ impl From<Filter> for FilterType {
 
 #[cfg(test)]
 mod tests {
-    use crate::ProcessWrapper;
     use {
+        crate::{ProcessWrapper, IMAGE_FILTER},
         async_std::task::block_on,
         std::{fs::read_dir, path::PathBuf, sync::Arc},
     };
@@ -310,7 +310,7 @@ mod tests {
                         .unwrap_or_default()
                         .to_str()
                         .unwrap_or_default();
-                    if path.is_file() && ["png", "jpg", "jpeg"].contains(&ext) {
+                    if path.is_file() && IMAGE_FILTER.contains(&ext) {
                         return Some(path);
                     }
                     None
@@ -359,7 +359,7 @@ mod tests {
 
     #[test]
     fn video_process() {
-        crate::init().unwrap();
+        crate::init();
         ffmpeg::log::set_level(ffmpeg::log::Level::Info);
 
         let config = config();

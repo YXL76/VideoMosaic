@@ -13,3 +13,8 @@
 # test
 crawler/test/
 diff/test.*
+static/images/
+!static/images/icon.jpg
+!static/images/testdata.jpg
+static/videos/
+static/videos/testdata.mp4

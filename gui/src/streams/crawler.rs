@@ -1,5 +1,4 @@
 use {
-    crate::states::IMAGE_FILTER,
     iced::{
         futures::stream::{unfold, BoxStream},
         Subscription,
@@ -101,9 +100,7 @@ where
                                 (Progress::None, State::Getting(client, tasks, urls, folder))
                             }
                             None => {
-                                let tasks =
-                                    download_urls(client, urls, &IMAGE_FILTER, folder.clone())
-                                        .into_iter();
+                                let tasks = download_urls(client, urls, folder.clone()).into_iter();
                                 (Progress::None, State::Downloading(tasks, false))
                             }
                         })

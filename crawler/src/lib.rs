@@ -65,7 +65,6 @@ struct Res {
 pub fn download_urls(
     client: Arc<HttpClient>,
     urls: Vec<String>,
-    filter: &'static [&str],
     folder: PathBuf,
 ) -> Tasks<Result<bool>> {
     urls.into_iter()
@@ -73,7 +72,7 @@ pub fn download_urls(
         .map(|(idx, url)| {
             let url = url.clone();
             let client = client.clone();
-            spawn(download_url(client, url, filter, folder.clone(), idx))
+            spawn(download_url(client, url, folder.clone(), idx))
         })
         .collect::<FuturesUnordered<_>>()
 }
@@ -81,7 +80,6 @@ pub fn download_urls(
 async fn download_url(
     client: Arc<HttpClient>,
     url: String,
-    filter: &[&str],
     folder: PathBuf,
     idx: usize,
 ) -> Result<bool> {
@@ -98,14 +96,12 @@ async fn download_url(
     if let Some(typ) = res.headers().get("content-type") {
         let typ = typ.to_str().unwrap().parse::<Mime>().unwrap();
         let ext = typ.subtype().as_str();
-        if filter.contains(&ext) {
-            let bytes = timeout(TIMEOUT, res.bytes()).await??;
-            let mut file = File::create(folder.join(format!("{}.{}", idx, ext)))
-                .await
-                .unwrap();
-            file.write(&bytes).await.unwrap();
-            return Ok(true);
-        }
+        let bytes = timeout(TIMEOUT, res.bytes()).await??;
+        let mut file = File::create(folder.join(format!("{}.{}", idx, ext)))
+            .await
+            .unwrap();
+        file.write(&bytes).await.unwrap();
+        return Ok(true);
     }
     Ok(false)
 }
@@ -208,15 +204,13 @@ mod tests {
 
     #[test]
     fn download_urls() {
-        const FILTER: [&str; 3] = ["png", "jpeg", "jpg"];
-
         let client = Arc::new(super::gen_client());
         let urls = get_urls(client.clone());
         block_on(async {
             let folder = PathBuf::from("test");
             let _ = remove_dir_all(&folder);
             create_dir(&folder).unwrap();
-            let tasks = super::download_urls(client, urls, &FILTER, folder);
+            let tasks = super::download_urls(client, urls, folder);
             for task in tasks {
                 let _ = task.await;
             }

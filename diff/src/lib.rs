@@ -14,8 +14,9 @@ use {
 
 pub use {ffmpeg::Error, process::*, utils::*};
 
-pub fn init() -> Result<(), ffmpeg::Error> {
-    ffmpeg::init()
+pub fn init() {
+    ffmpeg::init().unwrap();
+    ffmpeg::log::set_level(ffmpeg::log::Level::Quiet);
 }
 
 pub fn first_frame(filename: &Path) -> Result<(u32, u32, Vec<u8>), ffmpeg::Error> {

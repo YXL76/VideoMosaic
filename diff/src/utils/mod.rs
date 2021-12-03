@@ -11,6 +11,9 @@ use {
 
 pub(crate) use {frame_iter::FrameIter, frame_iter::ImageDump, transcoder::Transcode};
 
+pub const IMAGE_FILTER: [&str; 3] = ["png", "jpg", "jpeg"];
+pub const VIDEO_FILTER: [&str; 1] = ["mp4"];
+
 pub(crate) type SRBG = Srgb<f32>;
 pub(crate) type HSV = Hsv<encoding::Srgb, f32>;
 pub(crate) type LAB = Lab<D65, f32>;
