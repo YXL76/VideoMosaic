@@ -19,8 +19,6 @@ pub(crate) struct Transcode {
     last: Option<(usize, Rational, Option<i64>, frame::Video)>,
 }
 
-unsafe impl Send for Transcode {}
-
 unsafe impl Sync for Transcode {}
 
 impl FrameIter for Transcode {
@@ -103,7 +101,7 @@ impl FrameIter for Transcode {
         } = self;
 
         if let Some((ist_index, _, old_timestamp, old_frame)) = last {
-            if let Some(transcoder) = transcoders.get_mut(&ist_index) {
+            if let Some(transcoder) = transcoders.get_mut(ist_index) {
                 // transcoder.receive_and_process_decoded_frames(octx, ost_time_base);
                 if let Some((timestamp, frame)) = transcoder.receive_decoded_frames() {
                     let width = transcoder.width();
@@ -159,7 +157,7 @@ impl FrameIter for Transcode {
             ..
         } = self;
         if let Some((ist_index, ost_time_base, timestamp, frame)) = last {
-            if let Some(transcoder) = transcoders.get_mut(&ist_index) {
+            if let Some(transcoder) = transcoders.get_mut(ist_index) {
                 // transcoder.receive_and_process_decoded_frames(octx, ost_time_base);
                 frame.data_mut(0).copy_from_slice(img.as_raw());
                 transcoder.process_decoded_frames(*timestamp, frame, octx, *ost_time_base);
@@ -191,8 +189,6 @@ struct Transcoder {
     ost_index: usize,
     pub(super) decoder: decoder::Video,
     encoder: encoder::video::Video,
-    f2i: software::scaling::Context,
-    i2f: software::scaling::Context,
 }
 
 impl Transcoder {
@@ -203,17 +199,6 @@ impl Transcoder {
     ) -> Result<Self, ffmpeg::Error> {
         let global_header = octx.format().flags().contains(format::Flags::GLOBAL_HEADER);
         let decoder = ist.codec().decoder().video()?;
-        let f2i = decoder.converter(format::Pixel::RGB24)?;
-        let i2f = software::scaling::Context::get(
-            format::Pixel::RGB24,
-            decoder.width(),
-            decoder.height(),
-            decoder.format(),
-            decoder.width(),
-            decoder.height(),
-            software::scaling::Flags::FAST_BILINEAR,
-        )
-        .unwrap();
         let mut ost = octx.add_stream(encoder::find(codec::Id::H264))?;
         let mut encoder = ost.codec().encoder().video()?;
         encoder.set_height(decoder.height());
@@ -235,8 +220,6 @@ impl Transcoder {
             ost_index,
             decoder,
             encoder,
-            f2i,
-            i2f,
         })
     }
 
@@ -265,7 +248,11 @@ impl Transcoder {
         if self.decoder.receive_frame(&mut decoded).is_ok() {
             let mut rgb_frame = frame::Video::empty();
             let timestamp = decoded.timestamp();
-            self.f2i.run(&decoded, &mut rgb_frame).unwrap();
+            self.decoder
+                .converter(format::Pixel::RGB24)
+                .unwrap()
+                .run(&decoded, &mut rgb_frame)
+                .unwrap();
             return Some((timestamp, rgb_frame));
         }
         None
@@ -279,7 +266,18 @@ impl Transcoder {
         ost_time_base: Rational,
     ) {
         let mut decoded = frame::Video::empty();
-        self.i2f.run(frame, &mut decoded).unwrap();
+        software::scaling::Context::get(
+            format::Pixel::RGB24,
+            self.decoder.width(),
+            self.decoder.height(),
+            self.decoder.format(),
+            self.decoder.width(),
+            self.decoder.height(),
+            software::scaling::Flags::FAST_BILINEAR,
+        )
+        .unwrap()
+        .run(frame, &mut decoded)
+        .unwrap();
         decoded.set_pts(timestamp);
         decoded.set_kind(picture::Type::None);
         self.send_frame_to_encoder(&decoded);

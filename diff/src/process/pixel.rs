@@ -74,7 +74,7 @@ impl PixelImpl {
     }
 
     // #[inline(always)]
-    fn compare(&self, img: &RgbImage, other: &Vec<RawColor>, (x, y, w, h): Mask) -> f32 {
+    fn compare(&self, img: &RgbImage, other: &[RawColor], (x, y, w, h): Mask) -> f32 {
         let Self {
             size,
             converter,

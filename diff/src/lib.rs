@@ -78,12 +78,12 @@ impl Default for ColorSpace {
     }
 }
 
-impl Into<String> for ColorSpace {
-    fn into(self) -> String {
-        String::from(match self {
-            Self::RGB => "RGB",
-            Self::HSV => "HSV",
-            Self::CIELAB => "CIE L*a*b*",
+impl From<ColorSpace> for String {
+    fn from(cs: ColorSpace) -> Self {
+        Self::from(match cs {
+            ColorSpace::RGB => "RGB",
+            ColorSpace::HSV => "HSV",
+            ColorSpace::CIELAB => "CIE L*a*b*",
         })
     }
 }
@@ -100,11 +100,11 @@ impl Default for DistanceAlgorithm {
     }
 }
 
-impl Into<String> for DistanceAlgorithm {
-    fn into(self) -> String {
-        String::from(match self {
-            Self::Euclidean => "Euclidean",
-            Self::CIEDE2000 => "CIEDE2000",
+impl From<DistanceAlgorithm> for String {
+    fn from(da: DistanceAlgorithm) -> Self {
+        Self::from(match da {
+            DistanceAlgorithm::Euclidean => "Euclidean",
+            DistanceAlgorithm::CIEDE2000 => "CIEDE2000",
         })
     }
 }

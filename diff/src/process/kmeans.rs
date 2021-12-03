@@ -1,6 +1,6 @@
 use {
     super::{ColorSpace, Distance, LibItem, Mask, Process},
-    crate::utils::{Color, RawColor, HSV, LAB, SRBG},
+    crate::utils::{Color, MyHsv, MyLab, MySrgb, RawColor},
     image::{self, imageops::FilterType, RgbImage},
     kmeans_colors::{get_kmeans, get_kmeans_hamerly, Kmeans},
     palette::{IntoColor, Pixel, Srgb},
@@ -99,14 +99,14 @@ impl KMeansImpl {
 
         let k_means = Box::new(match hamerly {
             true => match color_space {
-                ColorSpace::RGB => k_means_hamerly::<SRBG>,
-                ColorSpace::HSV => k_means_hamerly::<HSV>,
-                ColorSpace::CIELAB => k_means_hamerly::<LAB>,
+                ColorSpace::RGB => k_means_hamerly::<MySrgb>,
+                ColorSpace::HSV => k_means_hamerly::<MyHsv>,
+                ColorSpace::CIELAB => k_means_hamerly::<MyLab>,
             },
             false => match color_space {
-                ColorSpace::RGB => k_means_std::<SRBG>,
-                ColorSpace::HSV => k_means_std::<HSV>,
-                ColorSpace::CIELAB => k_means_std::<LAB>,
+                ColorSpace::RGB => k_means_std::<MySrgb>,
+                ColorSpace::HSV => k_means_std::<MyHsv>,
+                ColorSpace::CIELAB => k_means_std::<MyLab>,
             },
         });
 

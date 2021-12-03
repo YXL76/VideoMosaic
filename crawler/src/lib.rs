@@ -16,7 +16,7 @@ use {
 
 pub use {anyhow::Result, isahc::HttpClient};
 
-type PARAMS = [(&'static str, Cow<'static, str>); 10];
+type Params = [(&'static str, Cow<'static, str>); 10];
 type Task<T> = JoinHandle<T>;
 type Tasks<T> = FuturesUnordered<Task<T>>;
 pub type TasksIter<T> = futures_unordered::IntoIter<Task<T>>;
@@ -25,7 +25,7 @@ const BASE_URL: &str = "https://image.baidu.com/search/acjson";
 const PAGE_NUM: usize = 50;
 const TIMEOUT: Duration = Duration::from_secs(60);
 const CONCURRENT: usize = 24;
-const BASE_PARAMS: PARAMS = [
+const BASE_PARAMS: Params = [
     ("queryWord", Cow::Borrowed("")),
     ("word", Cow::Borrowed("")),
     ("pn", Cow::Borrowed("0")),
@@ -40,7 +40,7 @@ const BASE_PARAMS: PARAMS = [
 
 const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) \
 Chrome/96.0.4664.45 Safari/537.36";
-const HEADERS: [(&'static str, &'static str); 6] = [
+const HEADERS: [(&str, &str); 6] = [
     ("Accept", "image/jpeg, image/png, */*; q=0.9"),
     ("Accept-Encoding", "gzip, deflate, br"),
     ("Accept-Language", "zh-CN,zh;q=0.9"),
@@ -69,11 +69,7 @@ pub fn download_urls(
 ) -> Tasks<Result<bool>> {
     urls.into_iter()
         .enumerate()
-        .map(|(idx, url)| {
-            let url = url.clone();
-            let client = client.clone();
-            spawn(download_url(client, url, folder.clone(), idx))
-        })
+        .map(|(idx, url)| spawn(download_url(client.clone(), url, folder.clone(), idx)))
         .collect::<FuturesUnordered<_>>()
 }
 
@@ -135,7 +131,7 @@ pub async fn get_urls(
 async fn get_part_urls(
     client: Arc<HttpClient>,
     start: String,
-    mut params: PARAMS,
+    mut params: Params,
 ) -> Result<Vec<String>> {
     params[2].1 = start.into();
     let url = parse_url(&params);
@@ -151,7 +147,7 @@ async fn get_part_urls(
     Ok(ret)
 }
 
-fn parse_url(params: &PARAMS) -> Uri {
+fn parse_url(params: &Params) -> Uri {
     format!(
         "{}?{}",
         BASE_URL,

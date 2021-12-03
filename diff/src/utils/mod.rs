@@ -15,9 +15,9 @@ pub(crate) use {frame_iter::FrameIter, frame_iter::ImageDump, transcoder::Transc
 pub const IMAGE_FILTER: [&str; 3] = ["png", "jpg", "jpeg"];
 pub const VIDEO_FILTER: [&str; 1] = ["mp4"];
 
-pub(crate) type SRBG = Srgb<f32>;
-pub(crate) type HSV = Hsv<encoding::Srgb, f32>;
-pub(crate) type LAB = Lab<D65, f32>;
+pub(crate) type MySrgb = Srgb<f32>;
+pub(crate) type MyHsv = Hsv<encoding::Srgb, f32>;
+pub(crate) type MyLab = Lab<D65, f32>;
 pub(crate) type RawColor = [f32; 3];
 
 pub trait Color:
@@ -34,9 +34,9 @@ pub trait Color:
 {
 }
 
-impl Color for SRBG {}
-impl Color for HSV {}
-impl Color for LAB {}
+impl Color for MySrgb {}
+impl Color for MyHsv {}
+impl Color for MyLab {}
 
 #[inline(always)]
 pub(crate) fn converter<T: Color>(rgb: &[u8; 3]) -> RawColor {
@@ -44,9 +44,12 @@ pub(crate) fn converter<T: Color>(rgb: &[u8; 3]) -> RawColor {
     color.into_raw()
 }
 
-pub(crate) fn ciede2000<T: Copy + Pixel<f32> + IntoColor<LAB>>(a: &RawColor, b: &RawColor) -> f32 {
-    let a: LAB = (*T::from_raw(a)).into_color();
-    let b: LAB = (*T::from_raw(b)).into_color();
+pub(crate) fn ciede2000<T: Copy + Pixel<f32> + IntoColor<MyLab>>(
+    a: &RawColor,
+    b: &RawColor,
+) -> f32 {
+    let a: MyLab = (*T::from_raw(a)).into_color();
+    let b: MyLab = (*T::from_raw(b)).into_color();
     a.get_color_difference(&b)
 }
 

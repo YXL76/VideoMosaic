@@ -6,7 +6,7 @@ use image::{DynamicImage, GenericImageView};
 use {
     crate::{
         ciede2000, converter, CalculationUnit, ColorSpace, DistanceAlgorithm, F32Wrapper,
-        FrameIter, ImageDump, RawColor, Transcode, HSV, SRBG,
+        FrameIter, ImageDump, MyHsv, MySrgb, RawColor, Transcode,
     },
     async_std::task::{spawn_blocking, JoinHandle},
     average::AverageImpl,
@@ -78,8 +78,8 @@ impl ProcessWrapper {
         let distance = Box::new(match dist_algo {
             DistanceAlgorithm::Euclidean => match color_space {
                 ColorSpace::HSV => |a: &RawColor, b: &RawColor| {
-                    let a = HSV::from_raw(a);
-                    let b = HSV::from_raw(b);
+                    let a = MyHsv::from_raw(a);
+                    let b = MyHsv::from_raw(b);
                     (a.hue.to_positive_degrees() - b.hue.to_positive_degrees()).powi(2)
                         + ((a.saturation - b.saturation) * 360.).powi(2)
                         + ((a.value - b.value) * 360.).powi(2)
@@ -89,15 +89,15 @@ impl ProcessWrapper {
                 },
             },
             DistanceAlgorithm::CIEDE2000 => match color_space {
-                ColorSpace::RGB => ciede2000::<SRBG>,
-                ColorSpace::HSV => ciede2000::<HSV>,
+                ColorSpace::RGB => ciede2000::<MySrgb>,
+                ColorSpace::HSV => ciede2000::<MyHsv>,
                 ColorSpace::CIELAB => ciede2000::<Lab>,
             },
         });
 
         let converter = Box::new(match color_space {
-            ColorSpace::RGB => converter::<SRBG>,
-            ColorSpace::HSV => converter::<HSV>,
+            ColorSpace::RGB => converter::<MySrgb>,
+            ColorSpace::HSV => converter::<MyHsv>,
             ColorSpace::CIELAB => converter::<Lab>,
         });
 
