@@ -102,11 +102,9 @@ fn main() {
                 let pb = gen_progress_bar(keyword.as_str(), num as u64);
 
                 let tasks = download_urls(client.clone(), urls, folder.clone());
-                let mut i = 0;
                 for task in tasks {
                     let _ = task.await;
-                    i += 1;
-                    pb.set_position(i);
+                    pb.inc(1);
                 }
                 pb.finish();
             });
@@ -146,8 +144,8 @@ fn main() {
         video,
     );
 
+    let index = gen_progress_bar("Index", library.len() as u64);
     let m = MultiProgress::new();
-    let index = m.add(gen_progress_bar("Index", library.len() as u64));
     let fill = m.add(gen_progress_bar(
         "Fill",
         (width as u64 / opts.size as u64 + 1) * (height as u64 / opts.size as u64 + 1),
@@ -157,32 +155,26 @@ fn main() {
     block_on(async move {
         let mut lib = Vec::with_capacity(library.len());
         let tasks = proc.index(library);
-        let mut i = 0;
         for task in tasks {
             if let Some(i) = task.await {
                 lib.push(i);
             }
-            i += 1;
-            index.set_position(i);
+            index.inc(1);
         }
         index.finish();
         let lib = Arc::new(lib);
 
         proc.pre_fill(lib);
-        let mut i = 0;
         while let Some(tasks) = proc.fill() {
             fill.reset();
-            let mut j = 0;
             for task in tasks {
                 let (mask, replace) = task.await;
                 proc.post_fill_step(mask, replace);
-                j += 1;
-                fill.set_position(j);
+                fill.inc(1);
             }
             fill.finish();
             proc.post_fill();
-            i += 1;
-            total.set_position(i);
+            total.inc(1);
         }
         fill.finish();
         total.finish();
