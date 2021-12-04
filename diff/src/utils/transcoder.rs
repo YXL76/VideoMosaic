@@ -182,6 +182,16 @@ impl FrameIter for Transcode {
         }
 
         octx.write_trailer().unwrap();
+
+        // to be dropped automatic
+        // self.stream_mapping.clear();
+        // self.stream_mapping.shrink_to_fit();
+        // self.ist_time_bases.clear();
+        // self.ist_time_bases.shrink_to_fit();
+        // self.ost_time_bases.clear();
+        // self.ost_time_bases.shrink_to_fit();
+        // self.transcoders.clear();
+        // self.transcoders.shrink_to_fit();
     }
 }
 

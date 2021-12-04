@@ -211,9 +211,7 @@ impl ProcessWrapper {
         }
         self.next = self.iter.next();
         if self.next.is_none() {
-            self.lib = None;
-            self.masks = None;
-            self.iter.flush();
+            self.flush();
             return false;
         }
 
@@ -359,6 +357,20 @@ impl ProcessWrapper {
         } else {
             self.iter.post_next(&self.buf)
         };
+    }
+
+    #[inline(always)]
+    pub fn flush(&mut self) {
+        self.iter.flush();
+
+        // to be dropped automatic
+        // self.composite = None;
+        // self.quad_iter = None;
+        // self.overlay = None;
+        // self.lib = None;
+        // self.masks = None;
+        // self.prev = None;
+        // self.next = None;
     }
 }
 
