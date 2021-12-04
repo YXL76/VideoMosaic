@@ -5,7 +5,7 @@ use {
         Rational,
     },
     image::RgbImage,
-    std::{collections::HashMap, sync::Arc},
+    std::collections::HashMap,
 };
 
 pub(crate) struct Transcode {
@@ -89,7 +89,7 @@ impl FrameIter for Transcode {
         )
     }
 
-    fn next(&mut self) -> Option<Arc<RgbImage>> {
+    fn next(&mut self) -> Option<RgbImage> {
         let Self {
             ictx,
             octx,
@@ -110,7 +110,7 @@ impl FrameIter for Transcode {
                     *old_timestamp = timestamp;
                     *old_frame = frame;
                     let img = RgbImage::from_raw(width, height, buf).unwrap();
-                    return Some(Arc::new(img));
+                    return Some(img);
                 }
             }
         }
@@ -134,7 +134,7 @@ impl FrameIter for Transcode {
                         let buf = frame.data(0).to_owned();
                         *last = Some((ist_index, ost_time_base, timestamp, frame));
                         let img = RgbImage::from_raw(width, height, buf).unwrap();
-                        return Some(Arc::new(img));
+                        return Some(img);
                     }
                 }
                 None => {

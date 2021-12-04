@@ -21,7 +21,7 @@ pub const VIDEO_FILTER: [&str; 1] = ["mp4"];
 pub(crate) type MySrgb = Srgb<f32>;
 pub(crate) type MyHsv = Hsv<encoding::Srgb, f32>;
 pub(crate) type MyLab = Lab<D65, f32>;
-pub(crate) type RawColor = [f32; 3];
+pub type RawColor = [f32; 3];
 
 pub trait Color:
     Copy

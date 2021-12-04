@@ -25,10 +25,7 @@ impl Process for AverageImpl {
 
     #[inline(always)]
     fn index_step(&self, img: RgbImage) -> LibItem {
-        (
-            vec![self.average(&img, (0, 0, self.size, self.size))],
-            Arc::new(img),
-        )
+        (vec![self.average(&img, (0, 0, self.size, self.size))], img)
     }
 
     #[inline(always)]
@@ -36,21 +33,22 @@ impl Process for AverageImpl {
         &self,
         img: Arc<RgbImage>,
         mask: Mask,
-        lib: Arc<Vec<LibItem>>,
-    ) -> (Mask, Arc<RgbImage>) {
+        lib: Arc<Vec<Vec<RawColor>>>,
+    ) -> (Mask, usize) {
         let Self { distance, .. } = self;
         let raw = self.average(&img, mask);
 
-        let (_, replace) = lib
+        let (idx, _) = lib
             .iter()
-            .min_by(|(a, _), (b, _)| {
+            .enumerate()
+            .min_by(|(_, a), (_, b)| {
                 distance(&a[0], &raw)
                     .partial_cmp(&distance(&b[0], &raw))
                     .unwrap()
             })
             .unwrap();
 
-        (mask, replace.clone())
+        (mask, idx)
     }
 }
 

@@ -161,13 +161,15 @@ fn parse_url(params: &Params) -> Uri {
     .unwrap()
 }
 
-pub fn gen_client() -> HttpClient {
-    HttpClient::builder()
-        .timeout(TIMEOUT)
-        .max_connections(CONCURRENT)
-        .default_headers(&HEADERS)
-        .build()
-        .unwrap()
+pub fn gen_client() -> Arc<HttpClient> {
+    Arc::new(
+        HttpClient::builder()
+            .timeout(TIMEOUT)
+            .max_connections(CONCURRENT)
+            .default_headers(&HEADERS)
+            .build()
+            .unwrap(),
+    )
 }
 
 #[cfg(test)]
@@ -200,7 +202,7 @@ mod tests {
 
     #[test]
     fn download_urls() {
-        let client = Arc::new(super::gen_client());
+        let client = super::gen_client();
         let urls = get_urls(client.clone());
         block_on(async {
             let folder = PathBuf::from("test");

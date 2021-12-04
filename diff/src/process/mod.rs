@@ -14,14 +14,14 @@ use {
     kmeans::KMeansImpl,
     palette::{Lab, Pixel as PalettePixel},
     pixel::PixelImpl,
-    std::{collections::BTreeMap, fmt, path::PathBuf, sync::Arc},
+    std::{borrow::Cow, collections::BTreeMap, fmt, path::PathBuf, sync::Arc},
 };
 
 pub type Mask = (u32, u32, u32, u32);
 type Task<T> = JoinHandle<T>;
 type Tasks<T> = FuturesUnordered<Task<T>>;
 pub type TasksIter<T> = futures_unordered::IntoIter<Task<T>>;
-pub type LibItem = (Vec<RawColor>, Arc<RgbImage>);
+pub type LibItem = (Vec<RawColor>, RgbImage);
 
 type Converter = Box<dyn Fn(&[u8]) -> RawColor + Sync + Send>;
 type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
@@ -37,8 +37,8 @@ trait Process {
         &self,
         img: Arc<RgbImage>,
         mask: Mask,
-        lib: Arc<Vec<LibItem>>,
-    ) -> (Mask, Arc<RgbImage>);
+        lib: Arc<Vec<Vec<RawColor>>>,
+    ) -> (Mask, usize);
 }
 
 pub struct ProcessWrapper {
@@ -51,8 +51,9 @@ pub struct ProcessWrapper {
     height: u32,
     quad_iter: Option<usize>,
     overlay: Option<u8>,
-    lib: Option<Arc<Vec<LibItem>>>,
-    masks: Option<Vec<Mask>>,
+    lib_color: Arc<Vec<Vec<RawColor>>>,
+    lib_image: Vec<RgbImage>,
+    masks: Vec<Mask>,
     prev: Option<Arc<RgbImage>>,
     next: Option<Arc<RgbImage>>,
 }
@@ -129,10 +130,7 @@ impl ProcessWrapper {
             (iter, frames, width, height)
         };
 
-        let composite = match overlay {
-            Some(_) => Some(ImageBuffer::new(width, height)),
-            None => None,
-        };
+        let composite = overlay.map(|_| ImageBuffer::new(width, height));
 
         Self {
             iter,
@@ -144,8 +142,9 @@ impl ProcessWrapper {
             height,
             quad_iter,
             overlay,
-            lib: None,
-            masks: None,
+            lib_color: Arc::new(Vec::new()),
+            lib_image: Vec::new(),
+            masks: Vec::new(),
             prev: None,
             next: None,
         }
@@ -200,8 +199,9 @@ impl ProcessWrapper {
     }
 
     #[inline(always)]
-    pub fn post_index(&mut self, lib: Arc<Vec<LibItem>>) {
-        self.lib = Some(lib);
+    pub fn post_index(&mut self, lib_color: Vec<Vec<RawColor>>, lib_image: Vec<RgbImage>) {
+        self.lib_color = Arc::new(lib_color);
+        self.lib_image = lib_image;
     }
 
     #[inline(always)]
@@ -209,7 +209,7 @@ impl ProcessWrapper {
         if self.quad_iter.is_none() {
             self.prev = self.next.take();
         }
-        self.next = self.iter.next();
+        self.next = self.iter.next().map(|img| Arc::new(img));
         if self.next.is_none() {
             self.flush();
             return false;
@@ -241,8 +241,8 @@ impl ProcessWrapper {
                     let mut rgb = [Variance::new(); 3];
                     for j in y..(y + h) {
                         for i in x..(x + w) {
-                            let raw = next.get_pixel(i, j).channels();
-                            for (idx, &raw) in raw.into_iter().enumerate() {
+                            let raw = next.get_pixel(i, j).0;
+                            for (idx, raw) in raw.into_iter().enumerate() {
                                 rgb[idx].next(raw as i64);
                             }
                         }
@@ -258,9 +258,9 @@ impl ProcessWrapper {
                 }
             }
 
-            self.masks = Some(heap.into_values().collect());
+            self.masks = heap.into_values().collect();
         } else {
-            if self.masks.is_some() {
+            if self.prev.is_some() {
                 return true;
             }
 
@@ -275,17 +275,16 @@ impl ProcessWrapper {
                     masks.push((x, y, w, h));
                 }
             }
-            self.masks = Some(masks);
+            self.masks = masks;
         };
 
         true
     }
 
     #[inline(always)]
-    pub fn fill(&mut self) -> Tasks<(Mask, Arc<RgbImage>)> {
-        let lib = self.lib.as_ref().unwrap();
+    pub fn fill(&mut self) -> Tasks<(Mask, usize)> {
         let next = self.next.as_ref().unwrap();
-        let masks = self.masks.as_ref().unwrap().iter();
+        let masks = self.masks.iter();
         let masks: Box<dyn Iterator<Item = &Mask>> =
             match self.quad_iter.is_none() && self.prev.is_some() {
                 true => {
@@ -311,7 +310,7 @@ impl ProcessWrapper {
             };
         masks
             .map(|&mask| {
-                let lib = lib.clone();
+                let lib = self.lib_color.clone();
                 let next = next.clone();
                 let inner = self.inner();
                 spawn_blocking(move || inner.fill_step(next, mask, lib))
@@ -320,9 +319,10 @@ impl ProcessWrapper {
     }
 
     #[inline(always)]
-    pub fn post_fill_step(&mut self, (x, y, w, h): Mask, mut replace: Arc<RgbImage>) {
+    pub fn post_fill_step(&mut self, (x, y, w, h): Mask, replace_idx: usize) {
+        let mut replace = Cow::Borrowed(&self.lib_image[replace_idx]);
         if replace.width() != w || replace.height() != h {
-            replace = Arc::new(
+            replace = Cow::Owned(
                 DynamicImage::ImageRgb8(replace.inner().clone())
                     .resize_to_fill(w, h, self.inner.filter())
                     .into_rgb8(),
@@ -441,7 +441,7 @@ mod tests {
     use {
         crate::{ProcessWrapper, IMAGE_FILTER},
         async_std::task::block_on,
-        std::{fs::read_dir, path::PathBuf, sync::Arc},
+        std::{fs::read_dir, path::PathBuf},
     };
 
     fn config() -> super::ProcessConfig {
@@ -483,20 +483,22 @@ mod tests {
         let library = lib();
 
         block_on(async move {
-            let mut lib = Vec::with_capacity(library.len());
+            let mut lib_color = Vec::with_capacity(library.len());
+            let mut lib_image = Vec::with_capacity(library.len());
             let tasks = proc.index(library);
             for task in tasks {
-                if let Some(i) = task.await {
-                    lib.push(i);
+                if let Some((color, image)) = task.await {
+                    lib_color.push(color);
+                    lib_image.push(image);
                 }
             }
-            proc.post_index(Arc::new(lib));
+            proc.post_index(lib_color, lib_image);
 
             while proc.pre_fill() {
                 let tasks = proc.fill();
                 for task in tasks {
-                    let (mask, replace) = task.await;
-                    proc.post_fill_step(mask, replace);
+                    let (mask, replace_idx) = task.await;
+                    proc.post_fill_step(mask, replace_idx);
                 }
                 proc.post_fill();
             }

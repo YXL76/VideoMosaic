@@ -39,7 +39,7 @@ impl Process for KMeansImpl {
                 &img,
                 (0, 0, self.size, self.size),
             )],
-            Arc::new(img),
+            img,
         )
     }
 
@@ -48,8 +48,8 @@ impl Process for KMeansImpl {
         &self,
         img: Arc<RgbImage>,
         mask: Mask,
-        lib: Arc<Vec<LibItem>>,
-    ) -> (Mask, Arc<RgbImage>) {
+        lib: Arc<Vec<Vec<RawColor>>>,
+    ) -> (Mask, usize) {
         let Self {
             k,
             converge,
@@ -60,16 +60,17 @@ impl Process for KMeansImpl {
         } = self;
         let raw = k_means(*k, *max_iter, *converge, &img, mask);
 
-        let (_, replace) = lib
+        let (idx, _) = lib
             .iter()
-            .min_by(|(a, _), (b, _)| {
+            .enumerate()
+            .min_by(|(_, a), (_, b)| {
                 distance(&a[0], &raw)
                     .partial_cmp(&distance(&b[0], &raw))
                     .unwrap()
             })
             .unwrap();
 
-        (mask, replace.clone())
+        (mask, idx)
     }
 }
 

@@ -74,10 +74,8 @@ where
         let num = self.num;
         let folder = self.folder;
 
-        let client = Arc::new(gen_client());
-
         Box::pin(unfold(
-            State::Ready(client, keyword, num, folder),
+            State::Ready(gen_client(), keyword, num, folder),
             move |state| async move {
                 match state {
                     State::Ready(client, keyword, num, folder) => {

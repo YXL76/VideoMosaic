@@ -1,8 +1,7 @@
-use image::Pixel;
 use {
     super::{Converter, Distance, LibItem, Mask, Process},
     crate::utils::RawColor,
-    image::{self, imageops::FilterType, RgbImage},
+    image::{self, imageops::FilterType, Pixel, RgbImage},
     std::sync::Arc,
 };
 
@@ -35,7 +34,7 @@ impl Process for PixelImpl {
                 buf.push(converter(img.get_pixel(i, j).channels()))
             }
         }
-        (buf, Arc::new(img))
+        (buf, img)
     }
 
     #[inline(always)]
@@ -43,18 +42,19 @@ impl Process for PixelImpl {
         &self,
         img: Arc<RgbImage>,
         mask: Mask,
-        lib: Arc<Vec<LibItem>>,
-    ) -> (Mask, Arc<RgbImage>) {
-        let (_, replace) = lib
+        lib: Arc<Vec<Vec<RawColor>>>,
+    ) -> (Mask, usize) {
+        let (idx, _) = lib
             .iter()
-            .min_by(|(a, _), (b, _)| {
+            .enumerate()
+            .min_by(|(_, a), (_, b)| {
                 self.compare(&img, a, mask)
                     .partial_cmp(&self.compare(&img, b, mask))
                     .unwrap()
             })
             .unwrap();
 
-        (mask, replace.clone())
+        (mask, idx)
     }
 }
 

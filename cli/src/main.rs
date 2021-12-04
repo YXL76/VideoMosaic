@@ -11,7 +11,6 @@ use {
         ffi::OsStr,
         fs::{create_dir, read_dir},
         path::PathBuf,
-        sync::Arc,
     },
 };
 
@@ -82,7 +81,7 @@ fn main() {
 
     if !opts.keyword.is_empty() {
         println!("Crawling images:");
-        let client = Arc::new(gen_client());
+        let client = gen_client();
 
         for keyword in opts.keyword {
             let mut folder = PathBuf::new();
@@ -162,23 +161,25 @@ fn main() {
     let total = m.add(gen_progress_bar("Total", proc.frames() as u64));
 
     block_on(async move {
-        let mut lib = Vec::with_capacity(library.len());
+        let mut lib_color = Vec::with_capacity(library.len());
+        let mut lib_image = Vec::with_capacity(library.len());
         let tasks = proc.index(library);
         for task in tasks {
-            if let Some(i) = task.await {
-                lib.push(i);
+            if let Some((color, image)) = task.await {
+                lib_color.push(color);
+                lib_image.push(image);
             }
             index.inc(1);
         }
-        proc.post_index(Arc::new(lib));
+        proc.post_index(lib_color, lib_image);
         index.finish();
 
         while proc.pre_fill() {
             fill.reset();
             let tasks = proc.fill();
             for task in tasks {
-                let (mask, replace) = task.await;
-                proc.post_fill_step(mask, replace);
+                let (mask, replace_idx) = task.await;
+                proc.post_fill_step(mask, replace_idx);
                 fill.inc(1);
             }
             proc.post_fill();

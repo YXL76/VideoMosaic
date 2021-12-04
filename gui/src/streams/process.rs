@@ -5,16 +5,15 @@ use {
     },
     iced_native::subscription,
     image::RgbImage,
-    mosaic_video_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper, TasksIter},
+    mosaic_video_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper, RawColor, TasksIter},
     std::{
         any::TypeId,
         hash::{Hash, Hasher},
         path::PathBuf,
-        sync::Arc,
     },
 };
 
-type ProcessData = (ProcessConfig, String, String, bool, Arc<Vec<PathBuf>>);
+type ProcessData = (ProcessConfig, String, String, bool, Vec<PathBuf>);
 
 #[derive(Debug, Clone)]
 pub struct Process {
@@ -31,7 +30,7 @@ impl Process {
         library: Vec<PathBuf>,
     ) -> Self {
         Self {
-            inner: Some((config, input, output, video, Arc::new(library))),
+            inner: Some((config, input, output, video, library)),
         }
     }
 
@@ -77,33 +76,43 @@ where
                     }),
 
                     State::Start(proc, library) => Some({
-                        let lib = Vec::with_capacity(library.len());
-                        let tasks = proc.index(library.to_vec()).into_iter();
-                        (Progress::None, State::Indexing(proc, tasks, lib))
+                        let lib_color = Vec::with_capacity(library.len());
+                        let lib_image = Vec::with_capacity(library.len());
+                        let tasks = proc.index(library).into_iter();
+                        (
+                            Progress::None,
+                            State::Indexing(proc, tasks, lib_color, lib_image),
+                        )
                     }),
 
-                    State::Indexing(mut proc, mut tasks, mut lib) => Some(match tasks.next() {
-                        Some(task) => {
-                            if let Some(i) = task.await {
-                                lib.push(i);
+                    State::Indexing(mut proc, mut tasks, mut lib_color, mut lib_image) => {
+                        Some(match tasks.next() {
+                            Some(task) => {
+                                if let Some((color, image)) = task.await {
+                                    lib_color.push(color);
+                                    lib_image.push(image);
+                                }
+                                (
+                                    Progress::Indexing,
+                                    State::Indexing(proc, tasks, lib_color, lib_image),
+                                )
                             }
-                            (Progress::Indexing, State::Indexing(proc, tasks, lib))
-                        }
-                        None => match lib.is_empty() {
-                            true => (Progress::Error, State::Finished),
-                            false => {
-                                proc.post_index(Arc::new(lib));
-                                let _ = proc.pre_fill();
-                                let tasks = proc.fill().into_iter();
-                                (Progress::Indexed, State::Filling(proc, tasks))
-                            }
-                        },
-                    }),
+                            None => match lib_image.is_empty() {
+                                true => (Progress::Error, State::Finished),
+                                false => {
+                                    proc.post_index(lib_color, lib_image);
+                                    let _ = proc.pre_fill();
+                                    let tasks = proc.fill().into_iter();
+                                    (Progress::Indexed, State::Filling(proc, tasks))
+                                }
+                            },
+                        })
+                    }
 
                     State::Filling(mut proc, mut tasks) => Some(match tasks.next() {
                         Some(task) => {
-                            let (mask, replace) = task.await;
-                            proc.post_fill_step(mask, replace);
+                            let (mask, replace_idx) = task.await;
+                            proc.post_fill_step(mask, replace_idx);
                             (Progress::Filling, State::Filling(proc, tasks))
                         }
                         None => {
@@ -139,9 +148,14 @@ pub enum Progress {
 
 #[derive(Debug)]
 enum State {
-    Ready(ProcessConfig, String, String, bool, Arc<Vec<PathBuf>>),
-    Start(ProcessWrapper, Arc<Vec<PathBuf>>),
-    Indexing(ProcessWrapper, TasksIter<Option<LibItem>>, Vec<LibItem>),
-    Filling(ProcessWrapper, TasksIter<(Mask, Arc<RgbImage>)>),
+    Ready(ProcessConfig, String, String, bool, Vec<PathBuf>),
+    Start(ProcessWrapper, Vec<PathBuf>),
+    Indexing(
+        ProcessWrapper,
+        TasksIter<Option<LibItem>>,
+        Vec<Vec<RawColor>>,
+        Vec<RgbImage>,
+    ),
+    Filling(ProcessWrapper, TasksIter<(Mask, usize)>),
     Finished,
 }
