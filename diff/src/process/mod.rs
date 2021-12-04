@@ -5,7 +5,7 @@ mod pixel;
 use {
     crate::{
         ciede2000, converter, CalculationUnit, ColorSpace, DistanceAlgorithm, F32Wrapper,
-        FrameIter, ImageDump, MyHsv, MySrgb, RawColor, Transcode,
+        FrameIter, ImageDump, MyHsv, MySrgb, RawColor, Transcode, Variance,
     },
     async_std::task::{spawn_blocking, JoinHandle},
     average::AverageImpl,
@@ -211,7 +211,7 @@ impl ProcessWrapper {
             heap.insert(F32Wrapper(0.), (0, 0, self.width, self.height));
             for _ in 0..iterations {
                 let (_, (x, y, w, h)) = heap.pop_last().unwrap();
-                if w < 2 || h < 2 {
+                if w <= 4 || h <= 4 {
                     heap.insert(F32Wrapper(0.), (x, y, w, h));
                     continue;
                 }
@@ -228,39 +228,21 @@ impl ProcessWrapper {
                 ];
 
                 for (x, y, w, h) in quad {
-                    let mut total = 0;
-                    // RGB: 0~255
-                    let mut histogram = [[0usize; 256]; 3];
+                    let mut rgb = [Variance::new(); 3];
                     for j in y..(y + h) {
                         for i in x..(x + w) {
                             let raw = &img.get_pixel(i, j).0;
-                            total += 1;
-                            histogram[0][raw[0] as usize] += 1;
-                            histogram[0][raw[1] as usize] += 1;
-                            histogram[0][raw[2] as usize] += 1;
+                            for (idx, &raw) in raw.into_iter().enumerate() {
+                                rgb[idx].next(raw as i64);
+                            }
                         }
                     }
 
-                    const FACTOR: [f32; 3] = [0.2989, 0.5870, 0.1140];
-                    let error = histogram
+                    const FACTOR: [f32; 3] = [0.299, 0.587, 0.114];
+                    let error = rgb
                         .into_iter()
                         .enumerate()
-                        .map(|(idx, part)| {
-                            let mean = part
-                                .iter()
-                                .enumerate()
-                                .map(|(idx, cnt)| idx * cnt)
-                                .sum::<usize>()
-                                / total;
-                            let mean = mean as f32;
-                            let error = part
-                                .into_iter()
-                                .enumerate()
-                                .map(|(idx, cnt)| (cnt as f32 * (idx as f32 - mean)).powi(2))
-                                .sum::<f32>()
-                                / total as f32;
-                            error.sqrt() * FACTOR[idx]
-                        })
+                        .map(|(idx, part)| part.variance() * FACTOR[idx])
                         .sum::<f32>();
                     heap.insert(F32Wrapper(error), (x, y, w, h));
                 }
@@ -423,7 +405,7 @@ mod tests {
             color_space: crate::ColorSpace::CIELAB,
             dist_algo: crate::DistanceAlgorithm::CIEDE2000,
             filter: super::Filter::Nearest,
-            quad_iter: None,
+            quad_iter: Some(1000),
             overlay: Some(127),
         }
     }

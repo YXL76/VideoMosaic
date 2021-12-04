@@ -1,5 +1,6 @@
 mod frame_iter;
 mod transcoder;
+mod variance;
 
 use {
     kmeans_colors::{Calculate, Hamerly, Sort},
@@ -10,7 +11,9 @@ use {
     std::cmp::{Ord, Ordering, PartialEq},
 };
 
-pub(crate) use {frame_iter::FrameIter, frame_iter::ImageDump, transcoder::Transcode};
+pub(crate) use {
+    frame_iter::FrameIter, frame_iter::ImageDump, transcoder::Transcode, variance::Variance,
+};
 
 pub const IMAGE_FILTER: [&str; 3] = ["png", "jpg", "jpeg"];
 pub const VIDEO_FILTER: [&str; 1] = ["mp4"];
