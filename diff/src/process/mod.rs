@@ -166,7 +166,7 @@ impl ProcessWrapper {
             Some(iterations) => {
                 // 1 + 4 + 16 + ...
                 let min_depth = (iterations * 3 + 1).log2() / 2 + 1;
-                let guess = min_depth / 4;
+                let guess = min_depth * 2;
                 (self.width / guess, self.height / guess)
             }
             None => (self.inner.size(), self.inner.size()),
@@ -197,6 +197,8 @@ impl ProcessWrapper {
     pub fn pre_fill(&mut self) -> bool {
         self.next = self.iter.next();
         if self.next.is_none() {
+            self.lib = None;
+            self.masks = None;
             self.iter.flush();
             return false;
         }
@@ -402,7 +404,7 @@ mod tests {
             color_space: crate::ColorSpace::CIELAB,
             dist_algo: crate::DistanceAlgorithm::CIEDE2000,
             filter: super::Filter::Nearest,
-            quad_iter: Some(1024),
+            quad_iter: Some(256),
         }
     }
 
