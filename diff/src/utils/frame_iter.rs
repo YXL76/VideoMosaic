@@ -33,12 +33,7 @@ impl FrameIter for ImageDump {
     }
 
     fn next(&mut self) -> Option<Arc<RgbImage>> {
-        if let Some(img) = self.img.as_ref() {
-            let img = img.clone();
-            self.img = None;
-            return Some(img);
-        }
-        None
+        self.img.take()
     }
 
     fn post_next(&mut self, img: &RgbImage) {

@@ -1,7 +1,7 @@
 use {
     super::{ColorSpace, Distance, LibItem, Mask, Process},
     crate::utils::{Color, MyHsv, MyLab, MySrgb, RawColor},
-    image::{self, imageops::FilterType, RgbImage},
+    image::{self, imageops::FilterType, Pixel as ImagePixel, RgbImage},
     kmeans_colors::{get_kmeans, get_kmeans_hamerly, Kmeans},
     palette::{IntoColor, Pixel, Srgb},
     std::sync::Arc,
@@ -137,7 +137,7 @@ macro_rules! k_means {
             let mut buf: Vec<T> = Vec::with_capacity((w * h) as usize);
             for j in y..(y + h) {
                 for i in x..(x + w) {
-                    let color = Srgb::from_raw(&img.get_pixel(i, j).0)
+                    let color = Srgb::from_raw(img.get_pixel(i, j).channels())
                         .into_format::<f32>()
                         .into_color();
                     buf.push(color)

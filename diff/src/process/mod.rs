@@ -12,7 +12,7 @@ use {
     futures::stream::{futures_unordered, FuturesUnordered},
     image::{imageops::FilterType, DynamicImage, GenericImageView, ImageBuffer, Pixel, RgbImage},
     kmeans::KMeansImpl,
-    palette::{Lab, Pixel as Palette_Pixel},
+    palette::{Lab, Pixel as PalettePixel},
     pixel::PixelImpl,
     std::{collections::BTreeMap, fmt, path::PathBuf, sync::Arc},
 };
@@ -23,7 +23,7 @@ type Tasks<T> = FuturesUnordered<Task<T>>;
 pub type TasksIter<T> = futures_unordered::IntoIter<Task<T>>;
 pub type LibItem = (Vec<RawColor>, Arc<RgbImage>);
 
-type Converter = Box<dyn Fn(&[u8; 3]) -> RawColor + Sync + Send>;
+type Converter = Box<dyn Fn(&[u8]) -> RawColor + Sync + Send>;
 type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
 
 trait Process {
@@ -45,6 +45,7 @@ pub struct ProcessWrapper {
     iter: Box<dyn FrameIter + Sync + Send + 'static>,
     inner: Arc<dyn Process + Sync + Send + 'static>,
     buf: RgbImage,
+    composite: Option<RgbImage>,
     frames: i64,
     width: u32,
     height: u32,
@@ -52,6 +53,7 @@ pub struct ProcessWrapper {
     overlay: Option<u8>,
     lib: Option<Arc<Vec<LibItem>>>,
     masks: Option<Vec<Mask>>,
+    prev: Option<Arc<RgbImage>>,
     next: Option<Arc<RgbImage>>,
 }
 
@@ -127,10 +129,16 @@ impl ProcessWrapper {
             (iter, frames, width, height)
         };
 
+        let composite = match overlay {
+            Some(_) => Some(ImageBuffer::new(width, height)),
+            None => None,
+        };
+
         Self {
             iter,
             inner,
             buf: ImageBuffer::new(width, height),
+            composite,
             frames,
             width,
             height,
@@ -138,6 +146,7 @@ impl ProcessWrapper {
             overlay,
             lib: None,
             masks: None,
+            prev: None,
             next: None,
         }
     }
@@ -197,6 +206,9 @@ impl ProcessWrapper {
 
     #[inline(always)]
     pub fn pre_fill(&mut self) -> bool {
+        if self.quad_iter.is_none() {
+            self.prev = self.next.take();
+        }
         self.next = self.iter.next();
         if self.next.is_none() {
             self.lib = None;
@@ -206,7 +218,7 @@ impl ProcessWrapper {
         }
 
         if let Some(iterations) = self.quad_iter {
-            let img = self.next.as_ref().unwrap();
+            let next = self.next.as_ref().unwrap();
             let mut heap: BTreeMap<F32Wrapper, Mask> = BTreeMap::new();
             heap.insert(F32Wrapper(0.), (0, 0, self.width, self.height));
             for _ in 0..iterations {
@@ -231,7 +243,7 @@ impl ProcessWrapper {
                     let mut rgb = [Variance::new(); 3];
                     for j in y..(y + h) {
                         for i in x..(x + w) {
-                            let raw = &img.get_pixel(i, j).0;
+                            let raw = next.get_pixel(i, j).channels();
                             for (idx, &raw) in raw.into_iter().enumerate() {
                                 rgb[idx].next(raw as i64);
                             }
@@ -274,16 +286,37 @@ impl ProcessWrapper {
     #[inline(always)]
     pub fn fill(&mut self) -> Tasks<(Mask, Arc<RgbImage>)> {
         let lib = self.lib.as_ref().unwrap();
-        let img = self.next.as_ref().unwrap();
-        self.masks
-            .as_ref()
-            .unwrap()
-            .iter()
+        let next = self.next.as_ref().unwrap();
+        let masks = self.masks.as_ref().unwrap().iter();
+        let masks: Box<dyn Iterator<Item = &Mask>> =
+            match self.quad_iter.is_none() && self.prev.is_some() {
+                true => {
+                    let prev = self.prev.as_ref().unwrap();
+                    Box::new(masks.filter(|mask| {
+                        let mut total: usize = 0;
+                        let mut count: usize = 0;
+                        const STEP: usize = 5;
+                        for j in (mask.1..(mask.1 + mask.3)).step_by(STEP) {
+                            for i in (mask.0..(mask.0 + mask.2)).step_by(STEP) {
+                                let prev_pixel = prev.get_pixel(i, j);
+                                let next_pixel = next.get_pixel(i, j);
+                                total += 1;
+                                if prev_pixel != next_pixel {
+                                    count += 1;
+                                }
+                            }
+                        }
+                        count * 2 >= total
+                    }))
+                }
+                false => Box::new(masks),
+            };
+        masks
             .map(|&mask| {
-                let img = img.clone();
                 let lib = lib.clone();
+                let next = next.clone();
                 let inner = self.inner();
-                spawn_blocking(move || inner.fill_step(img, mask, lib))
+                spawn_blocking(move || inner.fill_step(next, mask, lib))
             })
             .collect::<FuturesUnordered<_>>()
     }
@@ -311,6 +344,7 @@ impl ProcessWrapper {
         if let Some(bottom_alpha) = self.overlay {
             let top_alpha = u8::MAX - bottom_alpha;
             let img = self.next.as_ref().unwrap();
+            let composite = self.composite.as_mut().unwrap();
             for j in 0..self.height {
                 for i in 0..self.width {
                     let mut top = self.buf.get_pixel(i, j).to_rgba();
@@ -318,11 +352,13 @@ impl ProcessWrapper {
                     top.0[3] = top_alpha;
                     bottom.0[3] = bottom_alpha;
                     bottom.blend(&top);
-                    self.buf.put_pixel(i, j, bottom.to_rgb());
+                    composite.put_pixel(i, j, bottom.to_rgb());
                 }
             }
-        }
-        self.iter.post_next(&self.buf)
+            self.iter.post_next(composite)
+        } else {
+            self.iter.post_next(&self.buf)
+        };
     }
 }
 
@@ -405,7 +441,7 @@ mod tests {
             color_space: crate::ColorSpace::CIELAB,
             dist_algo: crate::DistanceAlgorithm::CIEDE2000,
             filter: super::Filter::Nearest,
-            quad_iter: Some(1000),
+            quad_iter: None,
             overlay: Some(127),
         }
     }

@@ -42,7 +42,7 @@ impl Color for MyHsv {}
 impl Color for MyLab {}
 
 #[inline(always)]
-pub(crate) fn converter<T: Color>(rgb: &[u8; 3]) -> RawColor {
+pub(crate) fn converter<T: Color>(rgb: &[u8]) -> RawColor {
     let color: T = Srgb::from_raw(rgb).into_format::<f32>().into_color();
     color.into_raw()
 }

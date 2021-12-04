@@ -1,3 +1,4 @@
+use image::Pixel;
 use {
     super::{Converter, Distance, LibItem, Mask, Process},
     crate::utils::RawColor,
@@ -31,7 +32,7 @@ impl Process for PixelImpl {
         let mut buf: Vec<RawColor> = Vec::with_capacity((size * size) as usize);
         for j in 0..*size {
             for i in 0..*size {
-                buf.push(converter(&img.get_pixel(i, j).0))
+                buf.push(converter(img.get_pixel(i, j).channels()))
             }
         }
         (buf, Arc::new(img))
@@ -86,7 +87,7 @@ impl PixelImpl {
         for j in 0..h {
             for i in 0..w {
                 ans += distance(
-                    &converter(&img.get_pixel(i + x, j + y).0),
+                    &converter(img.get_pixel(i + x, j + y).channels()),
                     &other[(j * size + i) as usize],
                 );
             }

@@ -1,7 +1,7 @@
 use {
     super::{Converter, Distance, LibItem, Mask, Process},
     crate::utils::RawColor,
-    image::{self, imageops::FilterType, RgbImage},
+    image::{self, imageops::FilterType, Pixel, RgbImage},
     std::sync::Arc,
 };
 
@@ -76,7 +76,7 @@ impl AverageImpl {
         let mut ans = [0f32; 3];
         for j in y..(y + h) {
             for i in x..(x + w) {
-                let raw = converter(&img.get_pixel(i, j).0);
+                let raw = converter(img.get_pixel(i, j).channels());
                 ans[0] += raw[0];
                 ans[1] += raw[1];
                 ans[2] += raw[2];
