@@ -55,6 +55,9 @@ struct Opts {
     /// The number of iterations of the quadrant
     #[clap(long)]
     quad_iter: Option<usize>,
+    /// Overlay image and set the bottom image's alpha channel
+    #[clap(long)]
+    overlay: Option<u8>,
 }
 
 fn main() {
@@ -127,6 +130,7 @@ fn main() {
         dist_algo: opts.dist_algo,
         filter: opts.filter,
         quad_iter: opts.quad_iter,
+        overlay: opts.overlay,
     };
 
     let ext = OsStr::new(if video { "mp4" } else { "png" });

@@ -14,6 +14,7 @@ pub struct ChooseMethod {
     k_slider: slider::State,
     size_slider: slider::State,
     quad_slider: slider::State,
+    overlay_slider: slider::State,
 }
 
 impl<'a> Step<'a> for ChooseMethod {
@@ -27,6 +28,7 @@ impl<'a> Step<'a> for ChooseMethod {
             k_slider,
             size_slider,
             quad_slider,
+            overlay_slider,
         } = self;
 
         let calc_unit = [
@@ -137,6 +139,7 @@ impl<'a> Step<'a> for ChooseMethod {
             );
 
         let quad_iter = state.config.quad_iter.unwrap_or(256) as u16;
+        let overlay = state.config.overlay.unwrap_or(127);
         let config = Column::new()
             .spacing(spacings::_6)
             .push(Text::new(state.i18n.configuration).size(spacings::_8))
@@ -168,6 +171,28 @@ impl<'a> Step<'a> for ChooseMethod {
                         Slider::new(quad_slider, 256..=2048, quad_iter, StepMessage::QuadValue)
                             .width(Length::Fill)
                             .style(state.theme),
+                    ),
+            )
+            .push(
+                Row::new()
+                    .spacing(spacings::_6)
+                    .push(
+                        Checkbox::new(
+                            state.config.overlay.is_some(),
+                            format!("{}: {}", state.i18n.overlay, overlay),
+                            StepMessage::Overlay,
+                        )
+                        .style(state.theme),
+                    )
+                    .push(
+                        Slider::new(
+                            overlay_slider,
+                            u8::MIN..=u8::MAX,
+                            overlay,
+                            StepMessage::OverlayValue,
+                        )
+                        .width(Length::Fill)
+                        .style(state.theme),
                     ),
             );
 

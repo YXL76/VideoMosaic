@@ -233,6 +233,10 @@ impl<'a> Application for MosaicVideo<'a> {
                     state.config.quad_iter = if item { Some(256) } else { None }
                 }
                 StepMessage::QuadValue(item) => state.config.quad_iter = Some(item as usize),
+                StepMessage::Overlay(item) => {
+                    state.config.overlay = if item { Some(127) } else { None }
+                }
+                StepMessage::OverlayValue(item) => state.config.overlay = Some(item),
 
                 StepMessage::Start => {
                     let video = state.target_type == TargetType::Video;

@@ -2,7 +2,6 @@ mod average;
 mod kmeans;
 mod pixel;
 
-use image::{DynamicImage, GenericImageView};
 use {
     crate::{
         ciede2000, converter, CalculationUnit, ColorSpace, DistanceAlgorithm, F32Wrapper,
@@ -11,9 +10,9 @@ use {
     async_std::task::{spawn_blocking, JoinHandle},
     average::AverageImpl,
     futures::stream::{futures_unordered, FuturesUnordered},
-    image::{imageops::FilterType, ImageBuffer, RgbImage},
+    image::{imageops::FilterType, DynamicImage, GenericImageView, ImageBuffer, Pixel, RgbImage},
     kmeans::KMeansImpl,
-    palette::{Lab, Pixel},
+    palette::{Lab, Pixel as Palette_Pixel},
     pixel::PixelImpl,
     std::{collections::BTreeMap, fmt, path::PathBuf, sync::Arc},
 };
@@ -50,6 +49,7 @@ pub struct ProcessWrapper {
     width: u32,
     height: u32,
     quad_iter: Option<usize>,
+    overlay: Option<u8>,
     lib: Option<Arc<Vec<LibItem>>>,
     masks: Option<Vec<Mask>>,
     next: Option<Arc<RgbImage>>,
@@ -67,6 +67,7 @@ impl ProcessWrapper {
             dist_algo,
             filter,
             quad_iter,
+            overlay,
         }: ProcessConfig,
         input: String,
         output: String,
@@ -134,6 +135,7 @@ impl ProcessWrapper {
             width,
             height,
             quad_iter,
+            overlay,
             lib: None,
             masks: None,
             next: None,
@@ -321,8 +323,23 @@ impl ProcessWrapper {
         }
     }
 
+    /// See [`overlay`](#image::imageops::overlay)
     #[inline(always)]
     pub fn post_fill(&mut self) {
+        if let Some(bottom_alpha) = self.overlay {
+            let top_alpha = u8::MAX - bottom_alpha;
+            let img = self.next.as_ref().unwrap();
+            for j in 0..self.height {
+                for i in 0..self.width {
+                    let mut top = self.buf.get_pixel(i, j).to_rgba();
+                    let mut bottom = img.get_pixel(i, j).to_rgba();
+                    top.0[3] = top_alpha;
+                    bottom.0[3] = bottom_alpha;
+                    bottom.blend(&top);
+                    self.buf.put_pixel(i, j, bottom.to_rgb());
+                }
+            }
+        }
         self.iter.post_next(&self.buf)
     }
 }
@@ -343,6 +360,7 @@ pub struct ProcessConfig {
     pub dist_algo: DistanceAlgorithm,
     pub filter: Filter,
     pub quad_iter: Option<usize>,
+    pub overlay: Option<u8>,
 }
 
 impl Default for ProcessConfig {
@@ -356,6 +374,7 @@ impl Default for ProcessConfig {
             dist_algo: Default::default(),
             filter: Default::default(),
             quad_iter: Default::default(),
+            overlay: Default::default(),
         }
     }
 }
@@ -404,7 +423,8 @@ mod tests {
             color_space: crate::ColorSpace::CIELAB,
             dist_algo: crate::DistanceAlgorithm::CIEDE2000,
             filter: super::Filter::Nearest,
-            quad_iter: Some(256),
+            quad_iter: None,
+            overlay: Some(127),
         }
     }
 
