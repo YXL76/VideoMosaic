@@ -228,11 +228,11 @@ impl<'a> Application for MosaicVideo<'a> {
                 StepMessage::Filter(item) => state.config.filter = item,
                 StepMessage::K(item) => state.config.k = item,
                 StepMessage::Hamerly(item) => state.config.hamerly = item,
-                StepMessage::Size(item) => state.config.size = item,
+                StepMessage::Size(item) => state.config.size = item * 10,
                 StepMessage::Quad(item) => {
-                    state.config.quad_iter = if item { Some(256) } else { None }
+                    state.config.quad_iter = if item { Some(250) } else { None }
                 }
-                StepMessage::QuadValue(item) => state.config.quad_iter = Some(item as usize),
+                StepMessage::QuadValue(item) => state.config.quad_iter = Some((item * 10) as usize),
                 StepMessage::Overlay(item) => {
                     state.config.overlay = if item { Some(127) } else { None }
                 }

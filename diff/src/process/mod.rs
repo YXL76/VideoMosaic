@@ -73,7 +73,7 @@ impl ProcessWrapper {
         output: String,
         video: bool,
     ) -> Self {
-        let size = size as u32 * 10;
+        let size = size as u32;
         let filter = filter.into();
 
         let distance = Box::new(match dist_algo {
@@ -366,7 +366,7 @@ pub struct ProcessConfig {
 impl Default for ProcessConfig {
     fn default() -> Self {
         Self {
-            size: 10,
+            size: 100,
             k: 1,
             hamerly: false,
             calc_unit: Default::default(),
@@ -416,7 +416,7 @@ mod tests {
 
     fn config() -> super::ProcessConfig {
         super::ProcessConfig {
-            size: 5,
+            size: 50,
             k: 1,
             hamerly: false,
             calc_unit: crate::CalculationUnit::Average,

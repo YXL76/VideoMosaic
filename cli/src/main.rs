@@ -32,7 +32,7 @@ struct Opts {
     #[clap(short, long, parse(from_os_str), required_unless_present = "keyword")]
     library: Vec<PathBuf>,
     /// The size of the block
-    #[clap(short, long, default_value = "5")]
+    #[clap(short, long, default_value = "50")]
     size: u16,
     /// K-means (k)
     #[clap(long, default_value = "1")]
