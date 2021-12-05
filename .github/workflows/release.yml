@@ -1,0 +1,163 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cli: target/release/mosaic_video_cli
+            gui: target/release/mosaic_video_gui
+          - os: windows-latest
+            cli: target/release/mosaic_video_cli.exe
+            gui: target/release/mosaic_video_gui.exe
+
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            asciidoc \
+            clang \
+            cmake \
+            libaom-dev \
+            libavc1394-dev \
+            libavcodec-dev \
+            libavformat-dev \
+            libavutil-dev \
+            libbluray-dev \
+            libchromaprint-dev \
+            libcodec2-dev \
+            libdc1394-dev \
+            libdrm-dev \
+            libfdk-aac-dev \
+            libgme-dev \
+            libgnutls28-dev \
+            libgsm1-dev \
+            libgtk-3-dev \
+            liblilv-dev \
+            libmp3lame-dev \
+            libopenjp2-7-dev \
+            libopenmpt-dev \
+            libopus-dev \
+            libraw1394-dev \
+            librubberband-dev \
+            libsdl2-dev \
+            libsdl-pango-dev \
+            libshine-dev \
+            libsnappy-dev \
+            libsoxr-dev \
+            libspeex-dev \
+            libsratom-dev \
+            libssh-dev \
+            libswscale-dev \
+            libtheora-dev \
+            libtwolame-dev \
+            libunistring-dev \
+            libva-dev \
+            libvdpau-dev \
+            libvorbis-dev \
+            libvpx-dev \
+            libwavpack-dev \
+            libwebp-dev \
+            libx264-dev \
+            libx265-dev \
+            libxkbcommon-dev \
+            libxvidcore-dev \
+            libzvbi-dev \
+            meson \
+            nasm \
+            ocl-icd-opencl-dev \
+        if: runner.os == 'Linux'
+
+      - name: Install dependencies
+        run: |
+          $VCINSTALLDIR = $(& "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath)
+          Add-Content $env:GITHUB_ENV "LIBCLANG_PATH=${VCINSTALLDIR}\VC\Tools\LLVM\x64\bin`n"
+          vcpkg integrate install
+          vcpkg install ffmpeg[core,avcodec,avformat,swscale]:x64-windows-static
+        if: runner.os == 'Windows'
+
+      - name: Build
+        run: |
+          cargo build --release
+          cargo build --release --package mosaic_video_cli
+
+      - name: Compress
+        run: |
+          gzexe ${{ matrix.cli }}
+          sudo chmod +x ${{ matrix.cli }}
+          gzexe ${{ matrix.gui }}
+          sudo chmod +x ${{ matrix.gui }}
+        if: runner.os == 'Linux'
+
+      - name: Compress
+        uses: crazy-max/ghaction-upx@v1
+        with:
+          version: latest
+          files: |
+            ${{ matrix.cli }}
+            ${{ matrix.gui }}
+        if: runner.os == 'Windows'
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ runner.os }}-x64
+          path: |
+            ${{ matrix.cli }}
+            ${{ matrix.gui }}
+
+  release:
+    runs-on: ubuntu-latest
+    name: Release
+    needs:  build
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v2
+        with:
+          path: .artifact
+
+      - name: Rename file
+        run: |
+          mv .artifact/Linux-x64/mosaic_video_cli       cli-linux-x64
+          mv .artifact/Linux-x64/mosaic_video_gui       gui-linux-x64
+          mv .artifact/Windows-x64/mosaic_video_cli.exe cli-win-x64.exe
+          mv .artifact/Windows-x64/mosaic_video_gui.exe gui-win-x64.exe
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            cli-linux-x64
+            gui-linux-x64
+            cli-win-x64.exe
+            gui-win-x64.exe
