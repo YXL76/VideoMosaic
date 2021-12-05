@@ -29,16 +29,21 @@ type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
 trait Process {
     fn size(&self) -> u32;
 
+    fn prev(&self) -> &Option<RgbImage>;
+
+    fn next(&self) -> &Option<RgbImage>;
+
+    fn prev_mut(&mut self) -> &mut Option<RgbImage>;
+
+    fn next_mut(&mut self) -> &mut Option<RgbImage>;
+
+    fn set_lib_color(&mut self, lib_color: Vec<Vec<RawColor>>);
+
     fn filter(&self) -> FilterType;
 
     fn index_step(&self, img: RgbImage) -> LibItem;
 
-    fn fill_step(
-        &self,
-        img: Arc<RgbImage>,
-        mask: Mask,
-        lib: Arc<Vec<Vec<RawColor>>>,
-    ) -> (Mask, usize);
+    fn fill_step(&self, mask: Mask) -> (Mask, usize);
 }
 
 pub struct ProcessWrapper {
@@ -51,11 +56,8 @@ pub struct ProcessWrapper {
     height: u32,
     quad_iter: Option<usize>,
     overlay: Option<u8>,
-    lib_color: Arc<Vec<Vec<RawColor>>>,
     lib_image: Vec<RgbImage>,
     masks: Vec<Mask>,
-    prev: Option<Arc<RgbImage>>,
-    next: Option<Arc<RgbImage>>,
 }
 
 impl ProcessWrapper {
@@ -142,11 +144,8 @@ impl ProcessWrapper {
             height,
             quad_iter,
             overlay,
-            lib_color: Arc::new(Vec::new()),
             lib_image: Vec::new(),
             masks: Vec::new(),
-            prev: None,
-            next: None,
         }
     }
 
@@ -166,11 +165,6 @@ impl ProcessWrapper {
     }
 
     #[inline(always)]
-    fn inner(&self) -> Arc<dyn Process + Sync + Send + 'static> {
-        self.inner.clone()
-    }
-
-    #[inline(always)]
     pub fn index(&self, libraries: Vec<PathBuf>) -> Tasks<Option<LibItem>> {
         let (nwidth, nheight) = match self.quad_iter {
             Some(iterations) => {
@@ -184,7 +178,7 @@ impl ProcessWrapper {
         libraries
             .into_iter()
             .map(|lib| {
-                let inner = self.inner();
+                let inner = self.inner.clone();
                 spawn_blocking(move || {
                     if let Ok(img) = image::open(lib) {
                         let img = img
@@ -200,23 +194,29 @@ impl ProcessWrapper {
 
     #[inline(always)]
     pub fn post_index(&mut self, lib_color: Vec<Vec<RawColor>>, lib_image: Vec<RgbImage>) {
-        self.lib_color = Arc::new(lib_color);
+        Arc::get_mut(&mut self.inner)
+            .unwrap()
+            .set_lib_color(lib_color);
         self.lib_image = lib_image;
     }
 
     #[inline(always)]
     pub fn pre_fill(&mut self) -> bool {
-        if self.quad_iter.is_none() {
-            self.prev = self.next.take();
-        }
-        self.next = self.iter.next().map(|img| Arc::new(img));
-        if self.next.is_none() {
-            self.flush();
-            return false;
+        {
+            let inner = Arc::get_mut(&mut self.inner).unwrap();
+            if self.quad_iter.is_none() {
+                *inner.prev_mut() = inner.next_mut().take();
+            }
+            let next = inner.next_mut();
+            *next = self.iter.next();
+            if next.is_none() {
+                self.flush();
+                return false;
+            }
         }
 
         if let Some(iterations) = self.quad_iter {
-            let next = self.next.as_ref().unwrap();
+            let next = self.inner.next().as_ref().unwrap();
             let mut heap: BTreeMap<F32Wrapper, Mask> = BTreeMap::new();
             heap.insert(F32Wrapper(0.), (0, 0, self.width, self.height));
             for _ in 0..iterations {
@@ -260,7 +260,7 @@ impl ProcessWrapper {
 
             self.masks = heap.into_values().collect();
         } else {
-            if self.prev.is_some() {
+            if self.inner.prev().is_some() {
                 return true;
             }
 
@@ -283,12 +283,12 @@ impl ProcessWrapper {
 
     #[inline(always)]
     pub fn fill(&mut self) -> Tasks<(Mask, usize)> {
-        let next = self.next.as_ref().unwrap();
         let masks = self.masks.iter();
         let masks: Box<dyn Iterator<Item = &Mask>> =
-            match self.quad_iter.is_none() && self.prev.is_some() {
+            match self.quad_iter.is_none() && self.inner.prev().is_some() {
                 true => {
-                    let prev = self.prev.as_ref().unwrap();
+                    let prev = self.inner.prev().as_ref().unwrap();
+                    let next = self.inner.next().as_ref().unwrap();
                     Box::new(masks.filter(|mask| {
                         let mut total: usize = 0;
                         let mut count: usize = 0;
@@ -310,10 +310,8 @@ impl ProcessWrapper {
             };
         masks
             .map(|&mask| {
-                let lib = self.lib_color.clone();
-                let next = next.clone();
-                let inner = self.inner();
-                spawn_blocking(move || inner.fill_step(next, mask, lib))
+                let inner = self.inner.clone();
+                spawn_blocking(move || inner.fill_step(mask))
             })
             .collect::<FuturesUnordered<_>>()
     }
@@ -341,7 +339,7 @@ impl ProcessWrapper {
     pub fn post_fill(&mut self) {
         if let Some(bottom_alpha) = self.overlay {
             let top_alpha = u8::MAX - bottom_alpha;
-            let img = self.next.as_ref().unwrap();
+            let img = self.inner.next().as_ref().unwrap();
             let composite = self.composite.as_mut().unwrap();
             for j in 0..self.height {
                 for i in 0..self.width {

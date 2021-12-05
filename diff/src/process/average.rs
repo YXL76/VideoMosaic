@@ -2,7 +2,6 @@ use {
     super::{Converter, Distance, LibItem, Mask, Process},
     crate::utils::RawColor,
     image::{self, imageops::FilterType, Pixel, RgbImage},
-    std::sync::Arc,
 };
 
 pub(super) struct AverageImpl {
@@ -10,12 +9,40 @@ pub(super) struct AverageImpl {
     filter: FilterType,
     converter: Converter,
     distance: Distance,
+    lib_color: Vec<Vec<RawColor>>,
+    prev: Option<RgbImage>,
+    next: Option<RgbImage>,
 }
 
 impl Process for AverageImpl {
     #[inline(always)]
     fn size(&self) -> u32 {
         self.size
+    }
+
+    #[inline(always)]
+    fn prev(&self) -> &Option<RgbImage> {
+        &self.prev
+    }
+
+    #[inline(always)]
+    fn next(&self) -> &Option<RgbImage> {
+        &self.next
+    }
+
+    #[inline(always)]
+    fn prev_mut(&mut self) -> &mut Option<RgbImage> {
+        &mut self.prev
+    }
+
+    #[inline(always)]
+    fn next_mut(&mut self) -> &mut Option<RgbImage> {
+        &mut self.next
+    }
+
+    #[inline(always)]
+    fn set_lib_color(&mut self, lib_color: Vec<Vec<RawColor>>) {
+        self.lib_color = lib_color
     }
 
     #[inline(always)]
@@ -29,16 +56,16 @@ impl Process for AverageImpl {
     }
 
     #[inline(always)]
-    fn fill_step(
-        &self,
-        img: Arc<RgbImage>,
-        mask: Mask,
-        lib: Arc<Vec<Vec<RawColor>>>,
-    ) -> (Mask, usize) {
-        let Self { distance, .. } = self;
-        let raw = self.average(&img, mask);
+    fn fill_step(&self, mask: Mask) -> (Mask, usize) {
+        let Self {
+            distance,
+            lib_color,
+            next,
+            ..
+        } = self;
+        let raw = self.average(next.as_ref().unwrap(), mask);
 
-        let (idx, _) = lib
+        let (idx, _) = lib_color
             .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| {
@@ -65,6 +92,9 @@ impl AverageImpl {
             filter,
             converter,
             distance,
+            lib_color: Vec::new(),
+            prev: None,
+            next: None,
         }
     }
 

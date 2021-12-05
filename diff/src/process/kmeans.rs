@@ -4,7 +4,6 @@ use {
     image::{self, imageops::FilterType, Pixel as ImagePixel, RgbImage},
     kmeans_colors::{get_kmeans, get_kmeans_hamerly, Kmeans},
     palette::{IntoColor, Pixel, Srgb},
-    std::sync::Arc,
 };
 
 pub(super) struct KMeansImpl {
@@ -15,12 +14,40 @@ pub(super) struct KMeansImpl {
     filter: FilterType,
     distance: Distance,
     k_means: Box<dyn Fn(usize, usize, f32, &RgbImage, Mask) -> RawColor + Sync + Send>,
+    lib_color: Vec<Vec<RawColor>>,
+    prev: Option<RgbImage>,
+    next: Option<RgbImage>,
 }
 
 impl Process for KMeansImpl {
     #[inline(always)]
     fn size(&self) -> u32 {
         self.size
+    }
+
+    #[inline(always)]
+    fn prev(&self) -> &Option<RgbImage> {
+        &self.prev
+    }
+
+    #[inline(always)]
+    fn next(&self) -> &Option<RgbImage> {
+        &self.next
+    }
+
+    #[inline(always)]
+    fn prev_mut(&mut self) -> &mut Option<RgbImage> {
+        &mut self.prev
+    }
+
+    #[inline(always)]
+    fn next_mut(&mut self) -> &mut Option<RgbImage> {
+        &mut self.next
+    }
+
+    #[inline(always)]
+    fn set_lib_color(&mut self, lib_color: Vec<Vec<RawColor>>) {
+        self.lib_color = lib_color
     }
 
     #[inline(always)]
@@ -44,23 +71,20 @@ impl Process for KMeansImpl {
     }
 
     #[inline(always)]
-    fn fill_step(
-        &self,
-        img: Arc<RgbImage>,
-        mask: Mask,
-        lib: Arc<Vec<Vec<RawColor>>>,
-    ) -> (Mask, usize) {
+    fn fill_step(&self, mask: Mask) -> (Mask, usize) {
         let Self {
             k,
             converge,
             max_iter,
             distance,
             k_means,
+            lib_color,
+            next,
             ..
         } = self;
-        let raw = k_means(*k, *max_iter, *converge, &img, mask);
+        let raw = k_means(*k, *max_iter, *converge, next.as_ref().unwrap(), mask);
 
-        let (idx, _) = lib
+        let (idx, _) = lib_color
             .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| {
@@ -119,6 +143,9 @@ impl KMeansImpl {
             filter,
             distance,
             k_means,
+            lib_color: Vec::new(),
+            prev: None,
+            next: None,
         }
     }
 }

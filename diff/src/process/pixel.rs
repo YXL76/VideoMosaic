@@ -2,7 +2,6 @@ use {
     super::{Converter, Distance, LibItem, Mask, Process},
     crate::utils::RawColor,
     image::{self, imageops::FilterType, Pixel, RgbImage},
-    std::sync::Arc,
 };
 
 pub(super) struct PixelImpl {
@@ -10,12 +9,40 @@ pub(super) struct PixelImpl {
     filter: FilterType,
     converter: Converter,
     distance: Distance,
+    lib_color: Vec<Vec<RawColor>>,
+    prev: Option<RgbImage>,
+    next: Option<RgbImage>,
 }
 
 impl Process for PixelImpl {
     #[inline(always)]
     fn size(&self) -> u32 {
         self.size
+    }
+
+    #[inline(always)]
+    fn prev(&self) -> &Option<RgbImage> {
+        &self.prev
+    }
+
+    #[inline(always)]
+    fn next(&self) -> &Option<RgbImage> {
+        &self.next
+    }
+
+    #[inline(always)]
+    fn prev_mut(&mut self) -> &mut Option<RgbImage> {
+        &mut self.prev
+    }
+
+    #[inline(always)]
+    fn next_mut(&mut self) -> &mut Option<RgbImage> {
+        &mut self.next
+    }
+
+    #[inline(always)]
+    fn set_lib_color(&mut self, lib_color: Vec<Vec<RawColor>>) {
+        self.lib_color = lib_color
     }
 
     #[inline(always)]
@@ -38,18 +65,15 @@ impl Process for PixelImpl {
     }
 
     #[inline(always)]
-    fn fill_step(
-        &self,
-        img: Arc<RgbImage>,
-        mask: Mask,
-        lib: Arc<Vec<Vec<RawColor>>>,
-    ) -> (Mask, usize) {
-        let (idx, _) = lib
+    fn fill_step(&self, mask: Mask) -> (Mask, usize) {
+        let img = self.next.as_ref().unwrap();
+        let (idx, _) = self
+            .lib_color
             .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| {
-                self.compare(&img, a, mask)
-                    .partial_cmp(&self.compare(&img, b, mask))
+                self.compare(img, a, mask)
+                    .partial_cmp(&self.compare(img, b, mask))
                     .unwrap()
             })
             .unwrap();
@@ -71,6 +95,9 @@ impl PixelImpl {
             filter,
             converter,
             distance,
+            lib_color: Vec::new(),
+            prev: None,
+            next: None,
         }
     }
 
