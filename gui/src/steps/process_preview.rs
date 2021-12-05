@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub struct ProcessPreview {
     toggle: button::State,
     scroll: scrollable::State,

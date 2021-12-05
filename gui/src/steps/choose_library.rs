@@ -12,7 +12,7 @@ use {
     itertools::izip,
 };
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ChooseLibrary {
     left_scroll: scrollable::State,
     right_scroll: scrollable::State,

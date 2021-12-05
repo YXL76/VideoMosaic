@@ -8,6 +8,7 @@ use {
     mosaic_video_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper, RawColor, TasksIter},
     std::{
         any::TypeId,
+        cell::Cell,
         hash::{Hash, Hasher},
         path::PathBuf,
     },
@@ -15,9 +16,8 @@ use {
 
 type ProcessData = (ProcessConfig, String, String, bool, Vec<PathBuf>);
 
-#[derive(Debug, Clone)]
 pub struct Process {
-    inner: Option<ProcessData>,
+    inner: Cell<Option<ProcessData>>,
 }
 
 impl Process {
@@ -30,17 +30,14 @@ impl Process {
         library: Vec<PathBuf>,
     ) -> Self {
         Self {
-            inner: Some((config, input, output, video, library)),
+            inner: Cell::new(Some((config, input, output, video, library))),
         }
     }
 
     #[inline(always)]
     pub fn subscription(&self) -> Subscription<Progress> {
-        Subscription::from_recipe(self.clone())
-    }
-    #[inline(always)]
-    pub fn clear(&mut self) {
-        self.inner = None;
+        let inner = Cell::new(self.inner.take());
+        Subscription::from_recipe(Self { inner })
     }
 }
 
@@ -57,7 +54,7 @@ where
     }
 
     fn stream(self: Box<Self>, _input: BoxStream<'static, E>) -> BoxStream<'static, Self::Output> {
-        let (config, input, output, video, library) = self.inner.unwrap();
+        let (config, input, output, video, library) = self.inner.take().unwrap();
         Box::pin(unfold(
             State::Ready(config, input, output, video, library),
             move |state| async move {
@@ -134,7 +131,7 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Progress {
     Started(f32, f32, f32),
     Indexing,

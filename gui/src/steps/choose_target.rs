@@ -6,7 +6,7 @@ use {
     },
 };
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub struct ChooseTarget {
     scroll: scrollable::State,
     image_btn: button::State,

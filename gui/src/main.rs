@@ -276,7 +276,6 @@ impl<'a> Application for MosaicVideo<'a> {
 
                 StepMessage::ProcessMessage(ev) => match ev {
                     process::Progress::Started(a, b, c) => {
-                        state.process.as_mut().unwrap().clear();
                         state.step[0] = 100. / a;
                         state.step[1] = 100. / b;
                         state.step[2] = 100. / c;

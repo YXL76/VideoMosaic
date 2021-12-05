@@ -8,7 +8,7 @@ use {
     mosaic_video_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
 };
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub struct ChooseMethod {
     scroll: scrollable::State,
     k_slider: slider::State,

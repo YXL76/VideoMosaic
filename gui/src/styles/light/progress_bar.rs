@@ -3,6 +3,7 @@ use {
     iced::progress_bar,
 };
 
+#[derive(Copy, Clone)]
 pub struct ProgressBar;
 
 impl progress_bar::StyleSheet for ProgressBar {
