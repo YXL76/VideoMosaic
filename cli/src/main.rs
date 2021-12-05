@@ -14,9 +14,11 @@ use {
     },
 };
 
-/// Mosaic Video CLI
+const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
 #[derive(Parser)]
-#[clap(version = "0.1", author = "YXL76 <chenxin.lan.76@gmail.com>")]
+#[clap(version = VERSION, author = AUTHORS, about = "Mosaic Video CLI")]
 struct Opts {
     /// The path of the target file
     #[clap(parse(from_os_str))]
