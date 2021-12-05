@@ -10,7 +10,10 @@ use {
     async_std::task::{spawn_blocking, JoinHandle},
     average::AverageImpl,
     futures::stream::{futures_unordered, FuturesUnordered},
-    image::{imageops::FilterType, DynamicImage, GenericImageView, ImageBuffer, Pixel, RgbImage},
+    image::{
+        imageops::{crop, resize, FilterType},
+        GenericImageView, ImageBuffer, Pixel, RgbImage,
+    },
     kmeans::KMeansImpl,
     palette::{Lab, Pixel as PalettePixel},
     pixel::PixelImpl,
@@ -320,11 +323,56 @@ impl ProcessWrapper {
     pub fn post_fill_step(&mut self, (x, y, w, h): Mask, replace_idx: usize) {
         let mut replace = Cow::Borrowed(&self.lib_image[replace_idx]);
         if replace.width() != w || replace.height() != h {
-            replace = Cow::Owned(
-                DynamicImage::ImageRgb8(replace.inner().clone())
-                    .resize_to_fill(w, h, self.inner.filter())
-                    .into_rgb8(),
-            );
+            let width = replace.width();
+            let height = replace.height();
+            let nwidth = w;
+            let nheight = h;
+
+            // See [`resize_dimensions`](#image::math::utils::resize_dimensions)
+            let (width2, height2) = {
+                let ratio = u64::from(width) * u64::from(nheight);
+                let nratio = u64::from(nwidth) * u64::from(height);
+
+                let use_width = nratio > ratio;
+                let intermediate = if use_width {
+                    u64::from(height) * u64::from(nwidth) / u64::from(width)
+                } else {
+                    u64::from(width) * u64::from(nheight) / u64::from(height)
+                };
+                let intermediate = std::cmp::max(1, intermediate);
+                if use_width {
+                    if intermediate <= u64::from(::std::u32::MAX) {
+                        (nwidth, intermediate as u32)
+                    } else {
+                        (
+                            (u64::from(nwidth) * u64::from(u32::MAX) / intermediate) as u32,
+                            u32::MAX,
+                        )
+                    }
+                } else if intermediate <= u64::from(u32::MAX) {
+                    (intermediate as u32, nheight)
+                } else {
+                    (
+                        u32::MAX,
+                        (u64::from(nheight) * u64::from(u32::MAX) / intermediate) as u32,
+                    )
+                }
+            };
+
+            // See [`resize_to_fill`](#image::DynamicImage::resize_to_fill)
+            let mut intermediate = resize(replace.inner(), width2, height2, self.inner.filter());
+            let (iwidth, iheight) = intermediate.dimensions();
+            let ratio = u64::from(iwidth) * u64::from(nheight);
+            let nratio = u64::from(nwidth) * u64::from(iheight);
+
+            let intermediate = if nratio > ratio {
+                let y = (iheight - nheight) / 2;
+                crop(&mut intermediate, 0, y, nwidth, nheight)
+            } else {
+                crop(&mut intermediate, (iwidth - nwidth) / 2, 0, nwidth, nheight)
+            };
+
+            replace = Cow::Owned(intermediate.to_image());
         }
         for j in 0..h {
             for i in 0..w {
