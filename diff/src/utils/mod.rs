@@ -23,6 +23,8 @@ pub(crate) type MyHsv = Hsv<encoding::Srgb, f32>;
 pub(crate) type MyLab = Lab<D65, f32>;
 pub type RawColor = [f32; 3];
 
+// TODO: How to calc distance between HSV color
+
 pub trait Color:
     Copy
     + Clone

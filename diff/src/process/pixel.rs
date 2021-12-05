@@ -9,7 +9,8 @@ pub(super) struct PixelImpl {
     filter: FilterType,
     converter: Converter,
     distance: Distance,
-    lib_color: Vec<Vec<RawColor>>,
+    lib_color: Box<[RawColor]>,
+    lib_image: Box<[RgbImage]>,
     prev: Option<RgbImage>,
     next: Option<RgbImage>,
 }
@@ -41,8 +42,14 @@ impl Process for PixelImpl {
     }
 
     #[inline(always)]
-    fn set_lib_color(&mut self, lib_color: Vec<Vec<RawColor>>) {
-        self.lib_color = lib_color
+    fn set_lib(&mut self, lib_color: Vec<RawColor>, lib_image: Vec<RgbImage>) {
+        self.lib_color = lib_color.into_boxed_slice();
+        self.lib_image = lib_image.into_boxed_slice();
+    }
+
+    #[inline(always)]
+    fn get_image(&self, idx: usize) -> &RgbImage {
+        &self.lib_image[idx]
     }
 
     #[inline(always)]
@@ -52,23 +59,14 @@ impl Process for PixelImpl {
 
     #[inline(always)]
     fn index_step(&self, img: RgbImage) -> LibItem {
-        let Self {
-            size, converter, ..
-        } = self;
-        let mut buf: Vec<RawColor> = Vec::with_capacity((size * size) as usize);
-        for j in 0..*size {
-            for i in 0..*size {
-                buf.push(converter(img.get_pixel(i, j).channels()))
-            }
-        }
-        (buf, img)
+        (RawColor::default(), img)
     }
 
     #[inline(always)]
     fn fill_step(&self, mask: Mask) -> (Mask, usize) {
         let img = self.next.as_ref().unwrap();
         let (idx, _) = self
-            .lib_color
+            .lib_image
             .iter()
             .enumerate()
             .min_by(|(_, a), (_, b)| {
@@ -95,16 +93,16 @@ impl PixelImpl {
             filter,
             converter,
             distance,
-            lib_color: Vec::new(),
+            lib_color: Vec::new().into_boxed_slice(),
+            lib_image: Vec::new().into_boxed_slice(),
             prev: None,
             next: None,
         }
     }
 
     // #[inline(always)]
-    fn compare(&self, img: &RgbImage, other: &[RawColor], (x, y, w, h): Mask) -> f32 {
+    fn compare(&self, img: &RgbImage, other: &RgbImage, (x, y, w, h): Mask) -> f32 {
         let Self {
-            size,
             converter,
             distance,
             ..
@@ -115,7 +113,7 @@ impl PixelImpl {
             for i in 0..w {
                 ans += distance(
                     &converter(img.get_pixel(i + x, j + y).channels()),
-                    &other[(j * size + i) as usize],
+                    &converter(other.get_pixel(i + x, j + y).channels()),
                 );
             }
         }

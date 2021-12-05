@@ -9,7 +9,8 @@ pub(super) struct AverageImpl {
     filter: FilterType,
     converter: Converter,
     distance: Distance,
-    lib_color: Vec<Vec<RawColor>>,
+    lib_color: Box<[RawColor]>,
+    lib_image: Box<[RgbImage]>,
     prev: Option<RgbImage>,
     next: Option<RgbImage>,
 }
@@ -41,8 +42,14 @@ impl Process for AverageImpl {
     }
 
     #[inline(always)]
-    fn set_lib_color(&mut self, lib_color: Vec<Vec<RawColor>>) {
-        self.lib_color = lib_color
+    fn set_lib(&mut self, lib_color: Vec<RawColor>, lib_image: Vec<RgbImage>) {
+        self.lib_color = lib_color.into_boxed_slice();
+        self.lib_image = lib_image.into_boxed_slice();
+    }
+
+    #[inline(always)]
+    fn get_image(&self, idx: usize) -> &RgbImage {
+        &self.lib_image[idx]
     }
 
     #[inline(always)]
@@ -52,7 +59,7 @@ impl Process for AverageImpl {
 
     #[inline(always)]
     fn index_step(&self, img: RgbImage) -> LibItem {
-        (vec![self.average(&img, (0, 0, self.size, self.size))], img)
+        (self.average(&img, (0, 0, self.size, self.size)), img)
     }
 
     #[inline(always)]
@@ -63,16 +70,12 @@ impl Process for AverageImpl {
             next,
             ..
         } = self;
-        let raw = self.average(next.as_ref().unwrap(), mask);
+        let raw = &self.average(next.as_ref().unwrap(), mask);
 
         let (idx, _) = lib_color
             .iter()
             .enumerate()
-            .min_by(|(_, a), (_, b)| {
-                distance(&a[0], &raw)
-                    .partial_cmp(&distance(&b[0], &raw))
-                    .unwrap()
-            })
+            .min_by(|(_, a), (_, b)| distance(a, raw).partial_cmp(&distance(b, raw)).unwrap())
             .unwrap();
 
         (mask, idx)
@@ -92,7 +95,8 @@ impl AverageImpl {
             filter,
             converter,
             distance,
-            lib_color: Vec::new(),
+            lib_color: Vec::new().into_boxed_slice(),
+            lib_image: Vec::new().into_boxed_slice(),
             prev: None,
             next: None,
         }

@@ -24,7 +24,7 @@ pub type Mask = (u32, u32, u32, u32);
 type Task<T> = JoinHandle<T>;
 type Tasks<T> = FuturesUnordered<Task<T>>;
 pub type TasksIter<T> = futures_unordered::IntoIter<Task<T>>;
-pub type LibItem = (Vec<RawColor>, RgbImage);
+pub type LibItem = (RawColor, RgbImage);
 
 type Converter = Box<dyn Fn(&[u8]) -> RawColor + Sync + Send>;
 type Distance = Box<dyn Fn(&RawColor, &RawColor) -> f32 + Sync + Send>;
@@ -40,7 +40,9 @@ trait Process {
 
     fn next_mut(&mut self) -> &mut Option<RgbImage>;
 
-    fn set_lib_color(&mut self, lib_color: Vec<Vec<RawColor>>);
+    fn set_lib(&mut self, lib_color: Vec<RawColor>, lib_image: Vec<RgbImage>);
+
+    fn get_image(&self, idx: usize) -> &RgbImage;
 
     fn filter(&self) -> FilterType;
 
@@ -48,6 +50,8 @@ trait Process {
 
     fn fill_step(&self, mask: Mask) -> (Mask, usize);
 }
+
+// TODO: Quad cannot work with pre-calc color
 
 pub struct ProcessWrapper {
     iter: Box<dyn FrameIter + Sync + Send + 'static>,
@@ -59,8 +63,7 @@ pub struct ProcessWrapper {
     height: u32,
     quad_iter: Option<usize>,
     overlay: Option<u8>,
-    lib_image: Vec<RgbImage>,
-    masks: Vec<Mask>,
+    masks: Box<[Mask]>,
 }
 
 impl ProcessWrapper {
@@ -147,8 +150,7 @@ impl ProcessWrapper {
             height,
             quad_iter,
             overlay,
-            lib_image: Vec::new(),
-            masks: Vec::new(),
+            masks: Vec::new().into_boxed_slice(),
         }
     }
 
@@ -196,11 +198,10 @@ impl ProcessWrapper {
     }
 
     #[inline(always)]
-    pub fn post_index(&mut self, lib_color: Vec<Vec<RawColor>>, lib_image: Vec<RgbImage>) {
+    pub fn post_index(&mut self, lib_color: Vec<RawColor>, lib_image: Vec<RgbImage>) {
         Arc::get_mut(&mut self.inner)
             .unwrap()
-            .set_lib_color(lib_color);
-        self.lib_image = lib_image;
+            .set_lib(lib_color, lib_image);
     }
 
     #[inline(always)]
@@ -278,7 +279,7 @@ impl ProcessWrapper {
                     masks.push((x, y, w, h));
                 }
             }
-            self.masks = masks;
+            self.masks = masks.into_boxed_slice();
         };
 
         true
@@ -321,7 +322,7 @@ impl ProcessWrapper {
 
     #[inline(always)]
     pub fn post_fill_step(&mut self, (x, y, w, h): Mask, replace_idx: usize) {
-        let mut replace = Cow::Borrowed(&self.lib_image[replace_idx]);
+        let mut replace = Cow::Borrowed(self.inner.get_image(replace_idx));
         if replace.width() != w || replace.height() != h {
             let width = replace.width();
             let height = replace.height();
@@ -499,7 +500,7 @@ mod tests {
             color_space: crate::ColorSpace::CIELAB,
             dist_algo: crate::DistanceAlgorithm::CIEDE2000,
             filter: super::Filter::Nearest,
-            quad_iter: Some(1000),
+            quad_iter: None,
             overlay: Some(127),
         }
     }

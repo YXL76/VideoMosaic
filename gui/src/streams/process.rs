@@ -150,7 +150,7 @@ enum State {
     Indexing(
         ProcessWrapper,
         TasksIter<Option<LibItem>>,
-        Vec<Vec<RawColor>>,
+        Vec<RawColor>,
         Vec<RgbImage>,
     ),
     Filling(ProcessWrapper, TasksIter<(Mask, usize)>),
