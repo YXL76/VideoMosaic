@@ -1,5 +1,5 @@
 mod average;
-mod kmeans;
+mod k_means;
 mod pixel;
 
 use {
@@ -14,7 +14,7 @@ use {
         imageops::{crop, resize, FilterType},
         GenericImageView, ImageBuffer, Pixel, RgbImage,
     },
-    kmeans::KMeansImpl,
+    k_means::KMeansImpl,
     palette::{Lab, Pixel as PalettePixel},
     pixel::PixelImpl,
     std::{borrow::Cow, collections::BTreeMap, fmt, path::PathBuf, sync::Arc},
@@ -224,7 +224,7 @@ impl ProcessWrapper {
             heap.insert(F32Wrapper(0.), (0, 0, self.width, self.height));
             for _ in 0..iterations {
                 let (_, (x, y, w, h)) = heap.pop_last().unwrap();
-                if w <= 4 || h <= 4 {
+                if w <= 8 || h <= 8 {
                     heap.insert(F32Wrapper(0.), (x, y, w, h));
                     continue;
                 }
@@ -341,7 +341,7 @@ impl ProcessWrapper {
                 };
                 let intermediate = std::cmp::max(1, intermediate);
                 if use_width {
-                    if intermediate <= u64::from(::std::u32::MAX) {
+                    if intermediate <= u64::from(u32::MAX) {
                         (nwidth, intermediate as u32)
                     } else {
                         (
@@ -499,7 +499,7 @@ mod tests {
             color_space: crate::ColorSpace::CIELAB,
             dist_algo: crate::DistanceAlgorithm::CIEDE2000,
             filter: super::Filter::Nearest,
-            quad_iter: None,
+            quad_iter: Some(1000),
             overlay: Some(127),
         }
     }
