@@ -9,7 +9,6 @@ use {
         button, scrollable, text_input, Column, Container, Element, Length, ProgressBar, Row,
         Scrollable, Subscription, Text, TextInput,
     },
-    itertools::izip,
 };
 
 #[derive(Default, Clone)]
@@ -19,7 +18,8 @@ pub struct ChooseLibrary {
     local_btn: button::State,
     spider_btn: button::State,
     library_btn: [button::State; LIBRARY_BTN_CNT],
-    inputs: [(text_input::State, text_input::State); LIBRARY_BTN_CNT],
+    keyword_input: [text_input::State; LIBRARY_BTN_CNT],
+    number_input: [text_input::State; LIBRARY_BTN_CNT],
     delete_btn: [button::State; LIBRARY_BTN_CNT],
 }
 
@@ -52,50 +52,55 @@ impl<'a> Step<'a> for ChooseLibrary {
             local_btn,
             spider_btn,
             library_btn,
-            inputs,
+            keyword_input,
+            number_input,
             delete_btn,
         } = self;
 
-        let left_side = izip![
-            0..,
-            state.pending.iter(),
-            inputs.iter_mut(),
-            delete_btn.iter_mut()
-        ]
-        .fold(
-            Scrollable::new(left_scroll)
-                .spacing(spacings::_4)
-                .style(state.theme),
-            |scroll, (idx, (keyword, num), (i1, i2), delete)| {
-                let row = Row::new()
-                    .spacing(spacings::_2)
-                    .push(
-                        TextInput::new(i1, state.i18n.keyword_prompt, keyword.as_str(), move |s| {
-                            StepMessage::EditKeyword(idx, s)
-                        })
-                        .on_submit(StepMessage::StartCrawler(idx))
-                        .width(Length::FillPortion(3))
-                        .style(state.theme)
-                        .padding(spacings::_1)
-                        .size(spacings::_8),
-                    )
-                    .push(
-                        TextInput::new(i2, "", num.as_str(), move |s| {
-                            StepMessage::EditNumber(idx, s)
-                        })
-                        .on_submit(StepMessage::StartCrawler(idx))
-                        .width(Length::FillPortion(1))
-                        .style(state.theme)
-                        .padding(spacings::_1)
-                        .size(spacings::_8),
-                    )
-                    .push(
-                        rou_btn(delete, "\u{f6bf}", spacings::_10, state.theme.danger_btn())
-                            .on_press(StepMessage::DeleteCrawler(idx)),
-                    );
-                scroll.push(row)
-            },
-        );
+        let left_side = state
+            .pending
+            .iter()
+            .enumerate()
+            .zip(keyword_input.iter_mut())
+            .zip(number_input.iter_mut())
+            .zip(delete_btn.iter_mut())
+            .fold(
+                Scrollable::new(left_scroll)
+                    .spacing(spacings::_4)
+                    .style(state.theme),
+                |scroll, ((((idx, (keyword, num)), ki), ni), delete)| {
+                    let row = Row::new()
+                        .spacing(spacings::_2)
+                        .push(
+                            TextInput::new(
+                                ki,
+                                state.i18n.keyword_prompt,
+                                keyword.as_str(),
+                                move |s| StepMessage::EditKeyword(idx, s),
+                            )
+                            .on_submit(StepMessage::StartCrawler(idx))
+                            .width(Length::FillPortion(3))
+                            .style(state.theme)
+                            .padding(spacings::_1)
+                            .size(spacings::_8),
+                        )
+                        .push(
+                            TextInput::new(ni, "", num.as_str(), move |s| {
+                                StepMessage::EditNumber(idx, s)
+                            })
+                            .on_submit(StepMessage::StartCrawler(idx))
+                            .width(Length::FillPortion(1))
+                            .style(state.theme)
+                            .padding(spacings::_1)
+                            .size(spacings::_8),
+                        )
+                        .push(
+                            rou_btn(delete, "\u{f6bf}", spacings::_10, state.theme.danger_btn())
+                                .on_press(StepMessage::DeleteCrawler(idx)),
+                        );
+                    scroll.push(row)
+                },
+            );
 
         let left_side = state.crawlers.values().fold(left_side, |scroll, crawler| {
             scroll.push(

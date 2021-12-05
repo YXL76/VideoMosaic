@@ -11,7 +11,6 @@ authors = ["YXL76 <chenxin.lan.76@gmail.com>"]
 async-std = "1.10"
 mosaic_video_crawler = { path = "../crawler" }
 mosaic_video_diff = { path = "../diff" }
-itertools = "0.10"
 rfd = "0.6"
 
 [dependencies.iced]
