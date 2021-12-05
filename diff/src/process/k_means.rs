@@ -1,5 +1,5 @@
 use {
-    super::{ColorSpace, Distance, LibItem, Mask, Process},
+    super::{impl_process, ColorSpace, Distance, LibItem, Mask},
     crate::utils::{Color, MyHsv, MyLab, MySrgb, RawColor},
     image::{self, imageops::FilterType, Pixel as ImagePixel, RgbImage},
     kmeans_colors::{get_kmeans, get_kmeans_hamerly, Kmeans},
@@ -20,48 +20,7 @@ pub(super) struct KMeansImpl {
     next: Option<RgbImage>,
 }
 
-impl Process for KMeansImpl {
-    #[inline(always)]
-    fn size(&self) -> u32 {
-        self.size
-    }
-
-    #[inline(always)]
-    fn prev(&self) -> &Option<RgbImage> {
-        &self.prev
-    }
-
-    #[inline(always)]
-    fn next(&self) -> &Option<RgbImage> {
-        &self.next
-    }
-
-    #[inline(always)]
-    fn prev_mut(&mut self) -> &mut Option<RgbImage> {
-        &mut self.prev
-    }
-
-    #[inline(always)]
-    fn next_mut(&mut self) -> &mut Option<RgbImage> {
-        &mut self.next
-    }
-
-    #[inline(always)]
-    fn set_lib(&mut self, lib_color: Vec<RawColor>, lib_image: Vec<RgbImage>) {
-        self.lib_color = lib_color.into_boxed_slice();
-        self.lib_image = lib_image.into_boxed_slice();
-    }
-
-    #[inline(always)]
-    fn get_image(&self, idx: usize) -> &RgbImage {
-        &self.lib_image[idx]
-    }
-
-    #[inline(always)]
-    fn filter(&self) -> FilterType {
-        self.filter
-    }
-
+impl_process!(KMeansImpl;
     #[inline(always)]
     fn index_step(&self, img: RgbImage) -> LibItem {
         let Self { k_means, .. } = self;
@@ -99,7 +58,7 @@ impl Process for KMeansImpl {
 
         (mask, idx)
     }
-}
+);
 
 impl KMeansImpl {
     const FACTOR_RGB: f32 = 0.0025;

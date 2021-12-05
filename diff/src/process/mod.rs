@@ -51,6 +51,56 @@ trait Process {
     fn fill_step(&self, mask: Mask) -> (Mask, usize);
 }
 
+macro_rules! impl_process {
+    ($class:ident; $( $fn:tt )*) => {
+        impl $crate::process::Process for $class {
+            #[inline(always)]
+            fn size(&self) -> u32 {
+                self.size
+            }
+
+            #[inline(always)]
+            fn prev(&self) -> &Option<RgbImage> {
+                &self.prev
+            }
+
+            #[inline(always)]
+            fn next(&self) -> &Option<RgbImage> {
+                &self.next
+            }
+
+            #[inline(always)]
+            fn prev_mut(&mut self) -> &mut Option<RgbImage> {
+                &mut self.prev
+            }
+
+            #[inline(always)]
+            fn next_mut(&mut self) -> &mut Option<RgbImage> {
+                &mut self.next
+            }
+
+            #[inline(always)]
+            fn set_lib(&mut self, lib_color: Vec<RawColor>, lib_image: Vec<RgbImage>) {
+                self.lib_color = lib_color.into_boxed_slice();
+                self.lib_image = lib_image.into_boxed_slice();
+            }
+
+            #[inline(always)]
+            fn get_image(&self, idx: usize) -> &RgbImage {
+                &self.lib_image[idx]
+            }
+
+            #[inline(always)]
+            fn filter(&self) -> FilterType {
+                self.filter
+            }
+
+            $( $fn )*
+        }
+    };
+}
+pub(super) use impl_process;
+
 // TODO: Quad cannot work with pre-calc color
 
 pub struct ProcessWrapper {
