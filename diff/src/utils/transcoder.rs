@@ -35,7 +35,6 @@ impl FrameIter for Transcode {
 
         let mut cnt = 0;
         for (ist_index, ist) in ictx.streams().enumerate() {
-            cnt = cnt.max(ist.frames());
             let ist_medium = ist.codec().medium();
             if ist_medium != media::Type::Audio
                 && ist_medium != media::Type::Video
@@ -47,6 +46,7 @@ impl FrameIter for Transcode {
             stream_mapping[ist_index] = ost_index;
             ist_time_bases[ist_index] = ist.time_base();
             if ist_medium == media::Type::Video {
+                cnt += ist.frames();
                 transcoders.insert(
                     ist_index,
                     Transcoder::new(&ist, &mut octx, ost_index as _).unwrap(),
