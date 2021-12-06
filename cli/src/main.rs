@@ -1,68 +1,85 @@
 use {
+    argh::FromArgs,
     async_std::task::block_on,
-    clap::Parser,
     indicatif::{MultiProgress, ProgressBar, ProgressStyle},
-    video_mosaic_crawler::{download_urls, gen_client, get_urls},
-    video_mosaic_diff::{
-        CalculationUnit, ColorSpace, DistanceAlgorithm, Filter, ProcessConfig, ProcessWrapper,
-        IMAGE_FILTER, VIDEO_FILTER,
-    },
     std::{
         ffi::OsStr,
         fs::{create_dir, read_dir},
         path::PathBuf,
     },
+    video_mosaic_crawler::{download_urls, gen_client, get_urls},
+    video_mosaic_diff::{
+        CalculationUnit, ColorSpace, DistanceAlgorithm, Filter, ProcessConfig, ProcessWrapper,
+        IMAGE_FILTER, VIDEO_FILTER,
+    },
 };
 
-const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+// const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
+// const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-#[derive(Parser)]
-#[clap(version = VERSION, author = AUTHORS, about = "Mosaic Video CLI")]
-struct Opts {
-    /// The path of the target file
-    #[clap(parse(from_os_str))]
-    target: PathBuf,
-    /// Keywords to crawl the images
-    #[clap(short, long, required_unless_present = "library")]
-    keyword: Vec<String>,
-    /// The number of images that need to be crawled
-    #[clap(short, long, default_value = "100")]
-    num: usize,
-    /// The path of the libraries
-    #[clap(short, long, parse(from_os_str), required_unless_present = "keyword")]
-    library: Vec<PathBuf>,
-    /// The size of the block
-    #[clap(short, long, default_value = "50")]
-    size: u16,
-    /// K-means (k)
-    #[clap(long, default_value = "1")]
-    k: u8,
-    /// Use Hamerly’s K-Means Clustering Algorithm
-    #[clap(short, long)]
-    hamerly: bool,
-    /// Calculation unit (average, pixel, k_means)
-    #[clap(long, default_value = "average", parse(from_str = str2cu))]
-    calc_unit: CalculationUnit,
-    /// Color space (rgb, hsv, cielab)
-    #[clap(long, default_value = "cielab", parse(from_str = str2cs))]
-    color_space: ColorSpace,
-    /// Distance algorithm (euclidean, ciede2000)
-    #[clap(long, default_value = "ciede2000", parse(from_str = str2da))]
-    dist_algo: DistanceAlgorithm,
-    /// Filter (nearest, triangle, catmullRom, gaussian, lanczos3)
-    #[clap(long, default_value = "nearest", parse(from_str = str2filter))]
-    filter: Filter,
-    /// The number of iterations of the quadrant
-    #[clap(long)]
-    quad_iter: Option<usize>,
-    /// Overlay image and set the bottom image's alpha channel
-    #[clap(long)]
-    overlay: Option<u8>,
+#[macro_export]
+macro_rules! cli_args {
+    ($name:ident; $(; $sub:expr)*) => {
+        #[derive($crate::FromArgs, PartialEq)]
+        /// Mosaic Video
+        $( $sub
+        )*
+        struct $name {
+            /// the path of the target file
+            #[argh(positional)]
+            target: PathBuf,
+            /// keywords to crawl the images
+            #[argh(option, short = 'k')]
+            keyword: Vec<String>,
+            /// the number of images that need to be crawled
+            #[argh(option, short = 'n', default = "100")]
+            num: usize,
+            /// the path of the libraries
+            #[argh(option, short = 'l')]
+            library: Vec<PathBuf>,
+            /// the size of the block
+            #[argh(option, short = 's', default = "50")]
+            size: u16,
+            /// k-means (k)
+            #[argh(option, default = "1")]
+            k: u8,
+            /// use Hamerly’s K-Means Clustering Algorithm
+            #[argh(switch, short = 'h')]
+            hamerly: bool,
+            /// calculation unit (average, pixel, k_means)
+            #[argh(option, default = "CalculationUnit::default()", from_str_fn(str2cu))]
+            calc_unit: CalculationUnit,
+            /// color space (rgb, hsv, cielab)
+            #[argh(option, default = "ColorSpace::default()", from_str_fn(str2cs))]
+            color_space: ColorSpace,
+            /// distance algorithm (euclidean, ciede2000)
+            #[argh(option, default = "DistanceAlgorithm::default()", from_str_fn(str2da))]
+            dist_algo: DistanceAlgorithm,
+            /// filter (nearest, triangle, catmullRom, gaussian, lanczos3)
+            #[argh(option, default = "Filter::default()", from_str_fn(str2filter))]
+            filter: Filter,
+            /// the number of iterations of the quadrant
+            #[argh(option)]
+            quad_iter: Option<usize>,
+            /// overlay image and set the bottom image's alpha channel
+            #[argh(option)]
+            overlay: Option<u8>,
+        }
+    };
 }
 
+cli_args!(Opts;);
+
 fn main() {
-    let opts: Opts = Opts::parse();
+    let opts: Opts = argh::from_env();
+
+    if opts.library.is_empty() && opts.keyword.is_empty() {
+        panic!(
+            r#"The following required arguments were not provided:
+    --keyword <KEYWORD>...
+    --library <LIBRARY>..."#
+        )
+    }
 
     let video = {
         let ext = opts.target.extension().unwrap().to_str().unwrap();
@@ -226,39 +243,39 @@ fn gen_progress_bar(title: &str, total: u64) -> ProgressBar {
     pb
 }
 
-fn str2cu(cu: &str) -> CalculationUnit {
+fn str2cu(cu: &str) -> Result<CalculationUnit, String> {
     match cu {
-        "average" => CalculationUnit::Average,
-        "pixel" => CalculationUnit::Pixel,
-        "k_means" => CalculationUnit::KMeans,
-        _ => Default::default(),
+        "average" => Ok(CalculationUnit::Average),
+        "pixel" => Ok(CalculationUnit::Pixel),
+        "k_means" => Ok(CalculationUnit::KMeans),
+        _ => Err("incorrect calculation unit".into()),
     }
 }
 
-fn str2cs(cs: &str) -> ColorSpace {
+fn str2cs(cs: &str) -> Result<ColorSpace, String> {
     match cs {
-        "rgb" => ColorSpace::RGB,
-        "hsv" => ColorSpace::HSV,
-        "cielab" => ColorSpace::CIELAB,
-        _ => Default::default(),
+        "rgb" => Ok(ColorSpace::RGB),
+        "hsv" => Ok(ColorSpace::HSV),
+        "cielab" => Ok(ColorSpace::CIELAB),
+        _ => Err("incorrect color space".into()),
     }
 }
 
-fn str2da(da: &str) -> DistanceAlgorithm {
+fn str2da(da: &str) -> Result<DistanceAlgorithm, String> {
     match da {
-        "euclidean" => DistanceAlgorithm::Euclidean,
-        "ciede2000" => DistanceAlgorithm::CIEDE2000,
-        _ => Default::default(),
+        "euclidean" => Ok(DistanceAlgorithm::Euclidean),
+        "ciede2000" => Ok(DistanceAlgorithm::CIEDE2000),
+        _ => Err("incorrect distance algorithm".into()),
     }
 }
 
-fn str2filter(filter: &str) -> Filter {
+fn str2filter(filter: &str) -> Result<Filter, String> {
     match filter {
-        "nearest" => Filter::Nearest,
-        "triangle" => Filter::Triangle,
-        "catmullRom" => Filter::CatmullRom,
-        "gaussian" => Filter::Gaussian,
-        "lanczos3" => Filter::Lanczos3,
-        _ => Default::default(),
+        "nearest" => Ok(Filter::Nearest),
+        "triangle" => Ok(Filter::Triangle),
+        "catmullRom" => Ok(Filter::CatmullRom),
+        "gaussian" => Ok(Filter::Gaussian),
+        "lanczos3" => Ok(Filter::Lanczos3),
+        _ => Err("incorrect filter".into()),
     }
 }

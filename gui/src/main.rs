@@ -7,13 +7,13 @@ mod styles;
 mod widgets;
 
 use {
+    argh::FromArgs,
     iced::{
         button, executor, image::Handle, window, Application, Column, Command, Container, Element,
         Length, Row, Settings, Space, Subscription, Text,
     },
     iced_native::subscription,
     image::{load_from_memory_with_format, ImageFormat},
-    video_mosaic_diff::{first_frame, IMAGE_FILTER, VIDEO_FILTER},
     rfd::{AsyncMessageDialog, FileDialog, MessageButtons, MessageDialog, MessageLevel},
     states::{State, EN, ZH_CN},
     std::{
@@ -25,10 +25,38 @@ use {
     steps::{StepMessage, Steps, TargetType},
     streams::{crawler, process},
     styles::{fonts, spacings, Theme},
+    video_mosaic_diff::{first_frame, IMAGE_FILTER, VIDEO_FILTER},
     widgets::{pri_btn, rou_btn, sec_btn},
 };
 
+#[macro_export]
+macro_rules! gui_args {
+    ($name:ident; $(; $sub:expr)*) => {
+        #[derive($crate::FromArgs, PartialEq)]
+        /// Mosaic Video
+        $( $sub
+        )*
+        struct $name {
+            /// if enabled, spread text workload in multiple threads when multiple cores are available.
+            /// By default, it is disabled.
+            #[argh(switch, short = 't')]
+            text_multithreading: bool,
+
+            /// if set to true, the renderer will try to perform antialiasing for some primitives.
+            #[argh(switch, short = 'a')]
+            antialiasing: bool,
+        }
+    };
+}
+
+gui_args!(Opts;);
+
 pub fn main() -> iced::Result {
+    let Opts {
+        text_multithreading,
+        antialiasing,
+    } = argh::from_env();
+
     video_mosaic_diff::init();
     let icon = load_from_memory_with_format(
         include_bytes!("../../static/images/icon.jpg"),
@@ -45,8 +73,8 @@ pub fn main() -> iced::Result {
             ..window::Settings::default()
         },
         default_font: Some(fonts::SARASA_UI_NERD),
-        text_multithreading: false,
-        antialiasing: false,
+        text_multithreading,
+        antialiasing,
         ..Settings::default()
     })
 }

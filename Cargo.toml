@@ -7,4 +7,3 @@ lto = true
 [workspace]
 resolver = "2"
 members = ["cli", "gui", "crawler", "diff"]
-default-members = ["gui"]
