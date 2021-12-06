@@ -113,9 +113,7 @@ jobs:
       - name: Compress
         run: |
           gzexe ${{ matrix.cli }}
-          sudo chmod +x ${{ matrix.cli }}
           gzexe ${{ matrix.gui }}
-          sudo chmod +x ${{ matrix.gui }}
         if: runner.os == 'Linux'
 
       - name: Compress
@@ -150,6 +148,8 @@ jobs:
           mv .artifact/Linux-x64/mosaic_video_gui       gui-linux-x64
           mv .artifact/Windows-x64/mosaic_video_cli.exe cli-win-x64.exe
           mv .artifact/Windows-x64/mosaic_video_gui.exe gui-win-x64.exe
+          sudo chmod +x cli-linux-x64
+          sudo chmod +x gui-linux-x64
 
       - name: Release
         uses: softprops/action-gh-release@v1
