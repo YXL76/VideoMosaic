@@ -138,7 +138,7 @@ impl<'a> Step<'a> for ChooseMethod {
                 .style(state.theme),
             );
 
-        let quad_iter = state.config.quad_iter.unwrap_or(250) as u16;
+        let quad_iter = state.config.quad_iter.unwrap_or(500) as u16;
         let overlay = state.config.overlay.unwrap_or(127);
         let config = Column::new()
             .spacing(spacings::_6)
@@ -172,14 +172,9 @@ impl<'a> Step<'a> for ChooseMethod {
                         .style(state.theme),
                     )
                     .push(
-                        Slider::new(
-                            quad_slider,
-                            25..=200,
-                            quad_iter / 10,
-                            StepMessage::QuadValue,
-                        )
-                        .width(Length::Fill)
-                        .style(state.theme),
+                        Slider::new(quad_slider, 10..=60, quad_iter / 50, StepMessage::QuadValue)
+                            .width(Length::Fill)
+                            .style(state.theme),
                     ),
             )
             .push(

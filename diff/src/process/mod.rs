@@ -269,16 +269,27 @@ impl ProcessWrapper {
             }
         }
 
+        let size = self.inner.size();
+        let mut masks =
+            Vec::with_capacity((((self.width / size) + 1) * ((self.height / size) + 1)) as usize);
+
         if let Some(iterations) = self.quad_iter {
+            const MIN_LENGTH: u32 = 16;
+            let min_area = (self.width / 128).max(MIN_LENGTH) * (self.height / 128).max(MIN_LENGTH);
             let next = self.inner.next().as_ref().unwrap();
             let mut heap: BTreeMap<F32Wrapper, Mask> = BTreeMap::new();
             heap.insert(F32Wrapper(0.), (0, 0, self.width, self.height));
-            for _ in 0..iterations {
-                let (_, (x, y, w, h)) = heap.pop_last().unwrap();
-                if w <= 8 || h <= 8 {
-                    heap.insert(F32Wrapper(0.), (x, y, w, h));
-                    continue;
-                }
+            'outer: for _ in 0..iterations {
+                let (x, y, w, h) = loop {
+                    if let Some((_, mask)) = heap.pop_last() {
+                        if mask.2 * mask.3 <= min_area {
+                            masks.push(mask);
+                            continue;
+                        }
+                        break mask;
+                    }
+                    break 'outer;
+                };
 
                 let w2 = w / 2;
                 let h2 = h / 2;
@@ -312,16 +323,12 @@ impl ProcessWrapper {
                 }
             }
 
-            self.masks = heap.into_values().collect();
+            masks.extend_from_slice(&heap.into_values().collect::<Vec<_>>());
         } else {
             if self.inner.prev().is_some() {
                 return true;
             }
 
-            let size = self.inner.size();
-            let mut masks = Vec::with_capacity(
-                (((self.width / size) + 1) * ((self.height / size) + 1)) as usize,
-            );
             for y in (0..self.height).step_by(size as usize) {
                 for x in (0..self.width).step_by(size as usize) {
                     let w = size.min(self.width - x);
@@ -329,9 +336,9 @@ impl ProcessWrapper {
                     masks.push((x, y, w, h));
                 }
             }
-            self.masks = masks.into_boxed_slice();
         };
 
+        self.masks = masks.into_boxed_slice();
         true
     }
 
