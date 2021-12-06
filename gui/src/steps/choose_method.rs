@@ -5,7 +5,7 @@ use {
         scrollable, slider, Checkbox, Column, Element, Length, Radio, Row, Scrollable, Slider,
         Text, Toggler,
     },
-    mosaic_video_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
+    video_mosaic_diff::{CalculationUnit, ColorSpace, DistanceAlgorithm, Filter},
 };
 
 #[derive(Default, Copy, Clone)]

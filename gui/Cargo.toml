@@ -1,5 +1,5 @@
 [package]
-name = "mosaic_video_gui"
+name = "video_mosaic_gui"
 version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -9,8 +9,8 @@ authors = ["YXL76 <chenxin.lan.76@gmail.com>"]
 
 [dependencies]
 async-std = "1.10"
-mosaic_video_crawler = { path = "../crawler" }
-mosaic_video_diff = { path = "../diff" }
+video_mosaic_crawler = { path = "../crawler" }
+video_mosaic_diff = { path = "../diff" }
 rfd = "0.6"
 
 [dependencies.iced]

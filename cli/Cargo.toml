@@ -1,5 +1,5 @@
 [package]
-name = "mosaic_video_cli"
+name = "video_mosaic_cli"
 version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -10,8 +10,8 @@ authors = ["YXL76 <chenxin.lan.76@gmail.com>"]
 [dependencies]
 async-std = "1.10"
 clap = "3.0.0-beta.5"
-mosaic_video_crawler = { path = "../crawler" }
-mosaic_video_diff = { path = "../diff" }
+video_mosaic_crawler = { path = "../crawler" }
+video_mosaic_diff = { path = "../diff" }
 
 [dependencies.indicatif]
 git = "https://github.com/mitsuhiko/indicatif"

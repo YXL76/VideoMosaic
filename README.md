@@ -1,1 +1,1 @@
-# MosaicVideo
+# VideoMosaic

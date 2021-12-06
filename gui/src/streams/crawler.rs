@@ -4,7 +4,7 @@ use {
         Subscription,
     },
     iced_native::subscription,
-    mosaic_video_crawler::{download_urls, gen_client, get_urls, HttpClient, Result, TasksIter},
+    video_mosaic_crawler::{download_urls, gen_client, get_urls, HttpClient, Result, TasksIter},
     std::{
         any::TypeId,
         hash::{Hash, Hasher},

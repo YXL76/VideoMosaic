@@ -2,8 +2,8 @@ use {
     async_std::task::block_on,
     clap::Parser,
     indicatif::{MultiProgress, ProgressBar, ProgressStyle},
-    mosaic_video_crawler::{download_urls, gen_client, get_urls},
-    mosaic_video_diff::{
+    video_mosaic_crawler::{download_urls, gen_client, get_urls},
+    video_mosaic_diff::{
         CalculationUnit, ColorSpace, DistanceAlgorithm, Filter, ProcessConfig, ProcessWrapper,
         IMAGE_FILTER, VIDEO_FILTER,
     },
@@ -69,7 +69,7 @@ fn main() {
         if IMAGE_FILTER.contains(&ext) {
             false
         } else if VIDEO_FILTER.contains(&ext) {
-            mosaic_video_diff::init();
+            video_mosaic_diff::init();
             true
         } else {
             panic!("Target is not supported!");

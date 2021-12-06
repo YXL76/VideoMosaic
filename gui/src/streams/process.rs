@@ -5,7 +5,7 @@ use {
     },
     iced_native::subscription,
     image::RgbImage,
-    mosaic_video_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper, RawColor, TasksIter},
+    video_mosaic_diff::{LibItem, Mask, ProcessConfig, ProcessWrapper, RawColor, TasksIter},
     std::{
         any::TypeId,
         cell::Cell,

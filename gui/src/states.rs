@@ -5,7 +5,7 @@ use {
         styles::Theme,
     },
     iced::image::Handle,
-    mosaic_video_diff::ProcessConfig,
+    video_mosaic_diff::ProcessConfig,
     std::{collections::HashMap, path::PathBuf},
 };
 

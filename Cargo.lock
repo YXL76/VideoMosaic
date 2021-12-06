@@ -1866,57 +1866,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mosaic_video_cli"
-version = "0.2.0"
-dependencies = [
- "async-std",
- "clap",
- "indicatif",
- "mosaic_video_crawler",
- "mosaic_video_diff",
-]
-
-[[package]]
-name = "mosaic_video_crawler"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "async-std",
- "futures",
- "http",
- "isahc",
- "mime",
- "serde",
- "urlencoding",
-]
-
-[[package]]
-name = "mosaic_video_diff"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "async-std",
- "ffmpeg-next",
- "futures",
- "image",
- "kmeans_colors",
- "palette",
-]
-
-[[package]]
-name = "mosaic_video_gui"
-version = "0.2.0"
-dependencies = [
- "async-std",
- "iced",
- "iced_native",
- "image",
- "mosaic_video_crawler",
- "mosaic_video_diff",
- "rfd",
-]
-
-[[package]]
 name = "mutate_once"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3035,6 +2984,57 @@ name = "version_check"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+
+[[package]]
+name = "video_mosaic_cli"
+version = "0.2.0"
+dependencies = [
+ "async-std",
+ "clap",
+ "indicatif",
+ "video_mosaic_crawler",
+ "video_mosaic_diff",
+]
+
+[[package]]
+name = "video_mosaic_crawler"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "async-std",
+ "futures",
+ "http",
+ "isahc",
+ "mime",
+ "serde",
+ "urlencoding",
+]
+
+[[package]]
+name = "video_mosaic_diff"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "async-std",
+ "ffmpeg-next",
+ "futures",
+ "image",
+ "kmeans_colors",
+ "palette",
+]
+
+[[package]]
+name = "video_mosaic_gui"
+version = "0.2.0"
+dependencies = [
+ "async-std",
+ "iced",
+ "iced_native",
+ "image",
+ "rfd",
+ "video_mosaic_crawler",
+ "video_mosaic_diff",
+]
 
 [[package]]
 name = "waker-fn"

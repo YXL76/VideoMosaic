@@ -11,11 +11,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            cli: target/release/mosaic_video_cli
-            gui: target/release/mosaic_video_gui
+            cli: target/release/video_mosaic_cli
+            gui: target/release/video_mosaic_gui
           - os: windows-latest
-            cli: target/release/mosaic_video_cli.exe
-            gui: target/release/mosaic_video_gui.exe
+            cli: target/release/video_mosaic_cli.exe
+            gui: target/release/video_mosaic_gui.exe
 
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -108,7 +108,7 @@ jobs:
       - name: Build
         run: |
           cargo build --release
-          cargo build --release --package mosaic_video_cli
+          cargo build --release --package video_mosaic_cli
 
       - name: Compress
         run: |
@@ -144,10 +144,10 @@ jobs:
 
       - name: Rename file
         run: |
-          mv .artifact/Linux-x64/mosaic_video_cli       cli-linux-x64
-          mv .artifact/Linux-x64/mosaic_video_gui       gui-linux-x64
-          mv .artifact/Windows-x64/mosaic_video_cli.exe cli-win-x64.exe
-          mv .artifact/Windows-x64/mosaic_video_gui.exe gui-win-x64.exe
+          mv .artifact/Linux-x64/video_mosaic_cli       cli-linux-x64
+          mv .artifact/Linux-x64/video_mosaic_gui       gui-linux-x64
+          mv .artifact/Windows-x64/video_mosaic_cli.exe cli-win-x64.exe
+          mv .artifact/Windows-x64/video_mosaic_gui.exe gui-win-x64.exe
           sudo chmod +x cli-linux-x64
           sudo chmod +x gui-linux-x64
 
