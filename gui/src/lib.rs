@@ -7,7 +7,6 @@ mod styles;
 mod widgets;
 
 use {
-    argh::FromArgs,
     iced::{
         button, executor, image::Handle, window, Application, Column, Command, Container, Element,
         Length, Row, Settings, Space, Subscription, Text,
@@ -29,34 +28,7 @@ use {
     widgets::{pri_btn, rou_btn, sec_btn},
 };
 
-#[macro_export]
-macro_rules! gui_args {
-    ($name:ident; $(; $sub:expr)*) => {
-        #[derive($crate::FromArgs, PartialEq)]
-        /// Mosaic Video
-        $( $sub
-        )*
-        struct $name {
-            /// if enabled, spread text workload in multiple threads when multiple cores are available.
-            /// By default, it is disabled.
-            #[argh(switch, short = 't')]
-            text_multithreading: bool,
-
-            /// if set to true, the renderer will try to perform antialiasing for some primitives.
-            #[argh(switch, short = 'a')]
-            antialiasing: bool,
-        }
-    };
-}
-
-gui_args!(Opts;);
-
-pub fn main() -> iced::Result {
-    let Opts {
-        text_multithreading,
-        antialiasing,
-    } = argh::from_env();
-
+pub fn run(text_multithreading: bool, antialiasing: bool) -> iced::Result {
     video_mosaic_diff::init();
     let icon = load_from_memory_with_format(
         include_bytes!("../../static/images/icon.jpg"),
@@ -65,7 +37,7 @@ pub fn main() -> iced::Result {
     .unwrap()
     .into_rgba8()
     .into_raw();
-    MosaicVideo::run(Settings {
+    VideoMosaic::run(Settings {
         window: window::Settings {
             position: window::Position::Centered,
             decorations: false,
@@ -80,7 +52,7 @@ pub fn main() -> iced::Result {
 }
 
 #[derive(Default)]
-struct MosaicVideo<'a> {
+struct VideoMosaic<'a> {
     state: State,
 
     i18n_btn: button::State,
@@ -105,7 +77,7 @@ enum Message {
     Step(StepMessage),
 }
 
-impl<'a> Application for MosaicVideo<'a> {
+impl<'a> Application for VideoMosaic<'a> {
     type Executor = executor::Default;
     type Message = Message;
     type Flags = ();
@@ -115,7 +87,7 @@ impl<'a> Application for MosaicVideo<'a> {
     }
 
     fn title(&self) -> String {
-        format!("{} - Mosaic Video", self.steps.title(&self.state))
+        format!("{} - Video Mosaic", self.steps.title(&self.state))
     }
 
     fn update(&mut self, message: Message) -> Command<Self::Message> {
@@ -444,7 +416,7 @@ impl<'a> Application for MosaicVideo<'a> {
     }
 }
 
-impl MosaicVideo<'_> {
+impl VideoMosaic<'_> {
     fn add_library(&mut self, path: &Path) {
         let Self { state, .. } = self;
         let entries = match read_dir(path) {
@@ -455,21 +427,19 @@ impl MosaicVideo<'_> {
             }
         };
         let entries = entries
-            .filter_map(|res| match res.as_ref() {
-                Ok(entry) => {
-                    let path = entry.path();
-                    let ext = path
-                        .extension()
-                        .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or_default();
-                    if path.is_file() && IMAGE_FILTER.contains(&ext) {
-                        Some(path)
-                    } else {
-                        None
-                    }
+            .flatten()
+            .filter_map(|entry| {
+                let path = entry.path();
+                let ext = path
+                    .extension()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default();
+                if path.is_file() && IMAGE_FILTER.contains(&ext) {
+                    Some(path)
+                } else {
+                    None
                 }
-                _ => None,
             })
             .collect::<Vec<_>>();
         if !entries.is_empty() {

@@ -108,3 +108,40 @@ impl From<DistanceAlgorithm> for String {
         })
     }
 }
+
+pub fn str2cu(cu: &str) -> Result<CalculationUnit, String> {
+    match cu {
+        "average" => Ok(CalculationUnit::Average),
+        "pixel" => Ok(CalculationUnit::Pixel),
+        "k_means" => Ok(CalculationUnit::KMeans),
+        _ => Err("incorrect calculation unit".into()),
+    }
+}
+
+pub fn str2cs(cs: &str) -> Result<ColorSpace, String> {
+    match cs {
+        "rgb" => Ok(ColorSpace::RGB),
+        "hsv" => Ok(ColorSpace::HSV),
+        "cielab" => Ok(ColorSpace::CIELAB),
+        _ => Err("incorrect color space".into()),
+    }
+}
+
+pub fn str2da(da: &str) -> Result<DistanceAlgorithm, String> {
+    match da {
+        "euclidean" => Ok(DistanceAlgorithm::Euclidean),
+        "ciede2000" => Ok(DistanceAlgorithm::CIEDE2000),
+        _ => Err("incorrect distance algorithm".into()),
+    }
+}
+
+pub fn str2filter(filter: &str) -> Result<Filter, String> {
+    match filter {
+        "nearest" => Ok(Filter::Nearest),
+        "triangle" => Ok(Filter::Triangle),
+        "catmullRom" => Ok(Filter::CatmullRom),
+        "gaussian" => Ok(Filter::Gaussian),
+        "lanczos3" => Ok(Filter::Lanczos3),
+        _ => Err("incorrect filter".into()),
+    }
+}

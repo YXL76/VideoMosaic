@@ -565,20 +565,18 @@ mod tests {
     fn lib() -> Vec<PathBuf> {
         read_dir("../crawler/test")
             .unwrap()
-            .filter_map(|res| match res.as_ref() {
-                Ok(entry) => {
-                    let path = entry.path();
-                    let ext = path
-                        .extension()
-                        .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or_default();
-                    if path.is_file() && IMAGE_FILTER.contains(&ext) {
-                        return Some(path);
-                    }
-                    None
+            .flatten()
+            .filter_map(|entry| {
+                let path = entry.path();
+                let ext = path
+                    .extension()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default();
+                if path.is_file() && IMAGE_FILTER.contains(&ext) {
+                    return Some(path);
                 }
-                _ => None,
+                None
             })
             .collect::<Vec<_>>()
     }

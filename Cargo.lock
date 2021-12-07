@@ -2916,10 +2916,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
-name = "video_mosaic_cli"
+name = "video_mosaic"
 version = "0.2.0"
 dependencies = [
  "argh",
+ "video_mosaic_cli",
+ "video_mosaic_diff",
+ "video_mosaic_gui",
+]
+
+[[package]]
+name = "video_mosaic_cli"
+version = "0.2.0"
+dependencies = [
  "async-std",
  "indicatif",
  "video_mosaic_crawler",
@@ -2957,7 +2966,6 @@ dependencies = [
 name = "video_mosaic_gui"
 version = "0.2.0"
 dependencies = [
- "argh",
  "async-std",
  "iced",
  "iced_native",

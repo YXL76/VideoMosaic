@@ -1,3 +1,21 @@
+[package]
+name = "video_mosaic"
+version = "0.2.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["YXL76 <chenxin.lan.76@gmail.com>"]
+readme = "README.md"
+homepage = "https://github.com/YXL76/VideoMosaic"
+repository = "https://github.com/YXL76/VideoMosaic"
+
+default-run = "video_mosaic"
+
+[dependencies]
+argh = "0.1"
+video_mosaic_cli = { path = "cli" }
+video_mosaic_diff = { path = "diff" }
+video_mosaic_gui = { path = "gui" }
+
 [patch.crates-io]
 wgpu_glyph = { git = "https://github.com/hecrj/wgpu_glyph", branch = "master" }
 

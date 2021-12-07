@@ -8,7 +8,6 @@ readme = "README.md"
 
 [dependencies]
 async-std = "1.10"
-argh = "0.1"
 video_mosaic_crawler = { path = "../crawler" }
 video_mosaic_diff = { path = "../diff" }
 
