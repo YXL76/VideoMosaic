@@ -11,11 +11,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            cli: target/release/video_mosaic_cli
-            gui: target/release/video_mosaic_gui
+            cli: target/release/cli
+            gui: target/release/gui
+            full: target/release/video_mosaic
           - os: windows-latest
-            cli: target/release/video_mosaic_cli.exe
-            gui: target/release/video_mosaic_gui.exe
+            cli: target/release/cli.exe
+            gui: target/release/gui.exe
+            full: target/release/video_mosaic.exe
 
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -108,12 +110,14 @@ jobs:
       - name: Build
         run: |
           cargo build --release
-          cargo build --release --package video_mosaic_cli
+          cargo build --release --bin cli
+          cargo build --release --bin gui
 
       - name: Compress
         run: |
           gzexe ${{ matrix.cli }}
           gzexe ${{ matrix.gui }}
+          gzexe ${{ matrix.full }}
         if: runner.os == 'Linux'
 
       - name: Compress
@@ -123,7 +127,8 @@ jobs:
           files: |
             ${{ matrix.cli }}
             ${{ matrix.gui }}
-        if: runner.os == 'Windows'
+            ${{ matrix.full }}
+      if: runner.os == 'Windows'
 
       - uses: actions/upload-artifact@v2
         with:
@@ -131,6 +136,7 @@ jobs:
           path: |
             ${{ matrix.cli }}
             ${{ matrix.gui }}
+            ${{ matrix.full }}
 
   release:
     runs-on: ubuntu-latest
@@ -144,12 +150,15 @@ jobs:
 
       - name: Rename file
         run: |
-          mv .artifact/Linux-x64/video_mosaic_cli       cli-linux-x64
-          mv .artifact/Linux-x64/video_mosaic_gui       gui-linux-x64
-          mv .artifact/Windows-x64/video_mosaic_cli.exe cli-win-x64.exe
-          mv .artifact/Windows-x64/video_mosaic_gui.exe gui-win-x64.exe
+          mv .artifact/Linux-x64/cli                cli-linux-x64
+          mv .artifact/Linux-x64/gui                gui-linux-x64
+          mv .artifact/Linux-x64/video_mosaic       video_mosaic-linux-x64
+          mv .artifact/Windows-x64/cli.exe          cli-win-x64.exe
+          mv .artifact/Windows-x64/gui.exe          gui-win-x64.exe
+          mv .artifact/Windows-x64/video_mosaic.exe video_mosaic-win-x64.exe
           sudo chmod +x cli-linux-x64
           sudo chmod +x gui-linux-x64
+          sudo chmod +x video_mosaic-linux-x64
 
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -157,5 +166,7 @@ jobs:
           files: |
             cli-linux-x64
             gui-linux-x64
+            video_mosaic-linux-x64
             cli-win-x64.exe
             gui-win-x64.exe
+            video_mosaic-win-x64.exe
