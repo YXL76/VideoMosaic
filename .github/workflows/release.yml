@@ -1,8 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
+  push: 
+    tags: 
       - "v*.*.*"
 
 jobs:
@@ -128,7 +128,7 @@ jobs:
             ${{ matrix.cli }}
             ${{ matrix.gui }}
             ${{ matrix.full }}
-      if: runner.os == 'Windows'
+        if: runner.os == 'Windows'
 
       - uses: actions/upload-artifact@v2
         with:

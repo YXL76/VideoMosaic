@@ -1182,9 +1182,9 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "gloo-timers"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47204a46aaff920a1ea58b11d03dec6f704287d27561724a4631e450654a891f"
+checksum = "6f16c88aa13d2656ef20d1c042086b8767bbe2bdb62526894275a1b062161b2e"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -1369,7 +1369,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#3f5ec5b20a48aebd6bd3e22506b01a08feaccdfc"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1382,7 +1382,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#3f5ec5b20a48aebd6bd3e22506b01a08feaccdfc"
 dependencies = [
  "bitflags",
 ]
@@ -1390,7 +1390,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#3f5ec5b20a48aebd6bd3e22506b01a08feaccdfc"
 dependencies = [
  "async-std",
  "futures",
@@ -1401,7 +1401,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#3f5ec5b20a48aebd6bd3e22506b01a08feaccdfc"
 dependencies = [
  "bytemuck",
  "glam",
@@ -1414,7 +1414,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#3f5ec5b20a48aebd6bd3e22506b01a08feaccdfc"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1427,7 +1427,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#3f5ec5b20a48aebd6bd3e22506b01a08feaccdfc"
 dependencies = [
  "iced_core",
 ]
@@ -1435,7 +1435,7 @@ dependencies = [
 [[package]]
 name = "iced_web"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#3f5ec5b20a48aebd6bd3e22506b01a08feaccdfc"
 dependencies = [
  "base64",
  "dodrio",
@@ -1452,7 +1452,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#3f5ec5b20a48aebd6bd3e22506b01a08feaccdfc"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -1472,7 +1472,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#3f5ec5b20a48aebd6bd3e22506b01a08feaccdfc"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -1590,9 +1590,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.10.1"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
+checksum = "a9a9d19fa1e79b6215ff29b9d6880b706147f16e9b1dbb1e4e5947b5b02bc5e3"
 dependencies = [
  "either",
 ]
@@ -2250,9 +2250,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pkg-config"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
+checksum = "d1a3ea4f0dd7f1f3e512cf97bf100819aa547f36a6eccac8dbaae839eb92363e"
 
 [[package]]
 name = "png"
@@ -2306,9 +2306,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.32"
+version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba508cc11742c0dc5c1659771673afbab7a0efab23aa17e854cbab0837ed0b43"
+checksum = "fb37d2df5df740e582f28f8560cf425f52bb267d872fe58358eadb554909f07a"
 dependencies = [
  "unicode-xid",
 ]
@@ -2917,7 +2917,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "video_mosaic"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "argh",
  "video_mosaic_cli",
@@ -2927,7 +2927,7 @@ dependencies = [
 
 [[package]]
 name = "video_mosaic_cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-std",
  "indicatif",
@@ -2937,7 +2937,7 @@ dependencies = [
 
 [[package]]
 name = "video_mosaic_crawler"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-std",
@@ -2951,7 +2951,7 @@ dependencies = [
 
 [[package]]
 name = "video_mosaic_diff"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-std",
@@ -2964,7 +2964,7 @@ dependencies = [
 
 [[package]]
 name = "video_mosaic_gui"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-std",
  "iced",
@@ -3242,8 +3242,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu_glyph"
-version = "0.15.1"
-source = "git+https://github.com/hecrj/wgpu_glyph?branch=master#f9f9adb9f134edebecfc9d20de0edb063de22071"
+version = "0.15.2"
+source = "git+https://github.com/hecrj/wgpu_glyph?branch=master#de88c5caa21b4419e799321a1a71bfe71face95f"
 dependencies = [
  "bytemuck",
  "glyph_brush",
